@@ -1,0 +1,5 @@
+{
+  "version": "2.0.1",
+  "buildDate": "2025-01-02",
+  "description": "Added Firebase push notifications for repeated medication reminders (4 reminders at 15-min intervals)"
+}

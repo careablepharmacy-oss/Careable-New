@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 18 - Backend reproduction validation for 'Careable 360+plus' (rebrand of enCARE GitHub repo). Created /app/backend/tests/test_careable360_reproduction.py with 19 pytest tests across 5 areas (health, public endpoints, auth-protected 401, seeded data, rebrand). 19/19 passed. Backend FastAPI on :8001 is healthy, scheduler started with all 4 jobs (check_missed_medications, generate_daily_adherence_logs, send_appointment_reminders, send_refill_reminders) and ran initial log generation (created 6 pending logs for the 5 seeded medications). Public /api/medications/autocomplete?q=met returns 200 with empty list (expected). Public /api/products returns 200. Auth-protected endpoints (/api/auth/me, /api/medications, /api/orders, /api/inv/invoices) correctly return 401 without session. MongoDB 'careable360_db' has the expected seed: 2 users (careable360plus@gmail.com=prescription_manager, encarelife@gmail.com=user), 5 medications for customer, 3 products, 2 inv_invoices, 2 orders, 1 crm_patient_profiles (note: actual collection is plural — review_request had typo), 1 crm_revenue_conversions, 1 user_purchase_links. Rebrand verified: helpers.ADMIN_EMAIL == 'careable360plus@gmail.com', determine_user_role mappings correct, ZERO case-sensitive 'enCARE'/'EnCARE'/'ENCARE' occurrences in main backend python sources. EMERGENT_LLM_KEY loaded (sk-emergent-...). DB_NAME=careable360_db. No code modifications were made.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "N/A (utility scripts)", "issue": "Stale references to old admin 'diabexpertonline@gmail.com' remain in 3 non-runtime utility scripts: /app/backend/cleanup_database.py, /app/backend/check_user_role.py, /app/backend/test_role_update.py. These are not on the request path and do not affect runtime behavior, but should be updated for full rebrand consistency."},
+      {"endpoint": "routes/crm.py", "issue": "Lowercase identifier 'encare_user_id' (CRM legacy DB field name) is used in 2 places (lines 670, 3150). Not user-visible, not the brand spelling 'enCARE', so it does not violate the rebrand acceptance criteria, but the main agent may consider renaming to 'careable_user_id' in a follow-up data-migration pass."},
+      {"endpoint": "tests/test_invoice_delivery.py / tests/test_refactoring_regression.py", "issue": "Old tests still contain literals 'test@encare.com' and download path 'encare-frontend-mar5-v3.zip'. Test-only, not shipped."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_careable360_reproduction.py",
+    "/app/test_reports/pytest/iter18_reproduction.xml"
+  ],
+  "action_items": [
+    "(Optional) Update stale 'diabexpertonline@gmail.com' references in /app/backend/cleanup_database.py, check_user_role.py, test_role_update.py to careable360plus@gmail.com for rebrand consistency (utility scripts only — non-blocking).",
+    "(Optional, follow-up) Consider renaming the CRM DB field 'encare_user_id' to 'careable_user_id' along with a data migration. Non-blocking; not user-visible.",
+    "No required fixes — reproduction acceptance criteria met."
+  ],
+  "critical_code_review_comments": [
+    "auth.py determine_user_role correctly hard-codes 'careable360plus@gmail.com' -> prescription_manager and falls back to 'user' for everything else. Centralized as expected.",
+    "helpers.py ADMIN_EMAIL = 'careable360plus@gmail.com' is the single source of truth for the admin/PM email outside auth.py.",
+    "Backend scheduler (APScheduler) correctly registers all 4 jobs at startup and the initial log generator creates exactly the expected pending adherence logs for the 5 seeded medications — confirms seed data is internally consistent with the schedule pydantic model.",
+    "OneSignal/Razorpay/SMTP/WhatsApp paths gracefully no-op when env vars are empty (verified by absence of startup errors in supervisor logs).",
+    "Tests had to use sync pymongo (not motor) because pytest-async fixtures with new event loops per test caused 'Event loop is closed' errors; sync is fine here for read-only assertions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_careable360_reproduction.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19)",
+    "frontend": "not tested (per request: backend only)"
+  },
+  "test_credentials": "No credentials used. App uses Emergent-managed Google OAuth which cannot be programmatically tested. Auth-protected endpoints were verified by asserting 401 when no session_token cookie/Authorization header is sent.",
+  "seed_data_creation": "No new seed data created during this iteration. Verified existing seed from /app/backend/seed_mock_data.py (already executed by main agent): 2 users, 5 medications, 3 products, 2 invoices, 2 orders, 1 crm_patient_profiles, 1 crm_revenue_conversions, 1 user_purchase_links.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reproduction is healthy. The collection is named 'crm_patient_profiles' (PLURAL), not 'crm_patient_profile' as the original review-request body stated. EMERGENT_LLM_KEY is set in /app/backend/.env. Auth must use Emergent OAuth via X-Session-ID header against EMERGENT_SESSION_URL — there is no email/password login path in this repo, so any future authenticated end-to-end test must seed db.sessions directly with a session_token and matching user_id (see iteration 17 for the pattern). Run regression suite with: cd /app/backend && PYTHONPATH=/app/backend python3 -m pytest tests/test_careable360_reproduction.py -v",
+  "rca of the issue": "No bugs identified. All reproduction acceptance criteria pass."
+}

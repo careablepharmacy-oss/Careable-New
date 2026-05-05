@@ -1,0 +1,50 @@
+# DiabExpert - Complete Build Instructions
+
+## Prerequisites
+- Node.js (v16 or higher)
+- Yarn package manager
+- Android Studio (for APK build)
+- JDK 11 or higher
+
+## Build Steps
+
+### 1. Install Dependencies
+cd frontend
+yarn install
+
+### 2. Build Web Assets
+yarn build
+
+### 3. Sync Capacitor (if needed)
+npx cap sync android
+
+### 4. Open in Android Studio
+npx cap open android
+
+### 5. Build APK in Android Studio
+- Select "Build" > "Build Bundle(s) / APK(s)" > "Build APK(s)"
+- APK will be generated in: android/app/build/outputs/apk/debug/app-debug.apk
+
+## Important Files
+- frontend/.env - Backend URL configuration (already set to production)
+- frontend/capacitor.config.json - Capacitor configuration
+- frontend/package.json - Dependencies
+
+## Production Backend URL
+https://careable-preview.preview.emergentagent.com
+
+## Notes
+- The .env file is already configured for production
+- All dependencies are listed in package.json
+- Android project is ready in the android folder
+- Build folder contains the compiled web assets
+
+## Troubleshooting
+If you encounter "web assets not found" error:
+1. Make sure you run "yarn build" first
+2. Then run "npx cap sync android"
+
+For Android build issues:
+1. Make sure Android Studio is installed
+2. Check JDK version (should be 11+)
+3. Clean and rebuild: Build > Clean Project, then Build > Rebuild Project

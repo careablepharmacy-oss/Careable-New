@@ -1,0 +1,9 @@
+/* Emergent badge removal */
+#emergent-badge {
+  display: none !important;
+}
+
+/* Remove the extra bottom spacing since badge is gone */
+body {
+  padding-bottom: 0 !important;
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Careable 360+plus</string>
+    <string name="title_activity_main">Careable 360+plus</string>
+    <string name="package_name">com.careable360plus.app</string>
+    <string name="custom_url_scheme">com.careable360plus.app</string>
+</resources>

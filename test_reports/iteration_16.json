@@ -1,0 +1,56 @@
+{
+  "summary": "Frontend CRM integration verified. Compile errors from iteration 15 are fixed (webpack overlay gone, only fcmService warning remains). PM session-based flows work: /prescription-manager -> Open CRM -> /crm dashboard -> sidebar nav -> patient list -> patient detail -> Back to PM all functional. 8/9 requested flows pass. Found 2 issues: (1) Overview tab missing on Patient Detail page; (2) Sync Users button click produced no visible toast.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "CrmPatientDetail (tabs)",
+        "issue": "Expected 7 tabs (Overview, Medicines, Vitals, Products, Lab Tests, Doctor Booking, Interactions) — 'Overview' tab is MISSING. Only 6 tabs render: Medicines, Vitals, Products, Lab Tests, Doctor Booking, Interactions. Interactions correctly appears last.",
+        "selector": "[role=tab], button (on /crm/patients/{id})",
+        "priority": "HIGH"
+      },
+      {
+        "component": "CrmLayout / Sync Users button",
+        "issue": "Clicking [data-testid=crm-sync-button] did not render a visible toast (document.querySelectorAll('[role=status], [data-sonner-toast], [class*=toast]') returned empty text). Button clicks without error but success/feedback toast is missing or uses a selector that is removed too quickly to capture. Recommend verifying Toaster is mounted at /crm and that syncFromMainApp() invocation triggers toast.success(...) with persistent duration.",
+        "selector": "[data-testid=crm-sync-button]",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Progress (shadcn) on CRM Dashboard/Patient Detail",
+        "issue": "Console React warning: 'React does not recognize the indicatorClassName prop on a DOM element.' The custom prop is being forwarded to a native DOM node; filter it out in the wrapper or use a styled child.",
+        "selector": "Progress component",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_16.json"
+  ],
+  "action_items": [
+    "Add 'Overview' tab (as first tab) to CrmPatientDetail.jsx — currently missing entirely",
+    "Verify Sync Users toast: ensure toast.success fires in syncFromMainApp handler inside CrmLayout.jsx; confirm <Toaster /> is mounted in CRM route tree",
+    "Fix indicatorClassName prop warning in Progress component (shadcn ui/progress.jsx) — use forwardRef and destructure indicatorClassName instead of forwarding to DOM",
+    "(Cosmetic) Resolve LandingPage warning: cannot resolve '../services/fcmService' — either create stub or remove import"
+  ],
+  "critical_code_review_comments": [
+    "PatientDetail: tab list is missing the Overview tab that the product spec mandates; likely removed/forgotten during merge of encare-crm repo",
+    "Sync Users flow has no user-visible success/error feedback; silent failures possible",
+    "Minor console pollution (indicatorClassName) indicates improper prop passthrough in shadcn Progress wrapper"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (not retested; iteration_15 had 35/35 green)",
+    "frontend": "~78% (7/9 flows fully pass; 1 partial - sync toast; 1 fail - Overview tab missing)"
+  },
+  "test_credentials": "PM session cookie session_token=test_pm_crm_2026 works via Bearer token on /api/auth/me (200 OK, user diabexpertonline@gmail.com role=prescription_manager). Frontend auth requires localStorage.setItem('session_token','test_pm_crm_2026'), 'isAuthenticated'='true', 'profileCompleted'='true' set via add_init_script BEFORE first navigation (PM user has null phone so profile auto-complete in AuthContext doesn't fire).",
+  "seed_data_creation": "None. Used pre-seeded PM session from iteration 15.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use page.add_init_script to set localStorage BEFORE page.goto — setting after first goto causes AuthContext's checkAuth to run with empty storage and the user is left unauthenticated for client-side nav. Working test pattern: add_init_script(localStorage setters) + add_cookies(session_token) + goto(/prescription-manager). PM user is diabexpertonline@gmail.com (id 2069063a-50c1-4f99-99e5-5b5d2b21d7ab). Customer seeded in CRM patient list is Sarun Kumar / advsarun@gmail.com (id f2eefadb-a488-495f-b93f-09300ceb112a). Once Overview tab and Sync toast are fixed, re-run the same playwright script to close out the last 2 flows.",
+  "rca of the issue": "Overview tab: CrmPatientDetail.jsx tab list literal does not include an 'Overview' TabsTrigger / TabsContent entry — spec deviation from encare-crm repo merge. Sync toast: either (a) toaster (Sonner) not mounted at /crm route tree, or (b) handler doesn't call toast.success, or (c) toast duration <100ms. Reproduction: goto /crm, click data-testid=crm-sync-button, wait 5s, query [role=status],[data-sonner-toast],[class*=toast] — returns empty."
+}

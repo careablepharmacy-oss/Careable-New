@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 15 — CRM integration (backend /api/crm/* + frontend /crm/* routes). Backend: 35/35 pytest tests PASS covering auth gating (PM-only, 401 anon, 403 non-PM), sync-from-main-app idempotency, patient CRUD with main-app bridging, dashboard stats/patients-to-call/revenue-summary, opportunities generate+list with revenue_category, laboratories CRUD, lab-test catalog CRUD, lab booking with auto revenue conversion, interactions with future-date validation, vitals writing to SHARED collections (blood_glucose/pressure/body_metrics), appointments to shared collection, lab reconciliation reports, onboarding, collection isolation (all CRM tables prefixed crm_), and main-app regression (/api/auth/me, /api/medications, /api/prescription-manager/*, /api/appointments). Frontend: dashboard renders correctly and ProtectedRoute redirects anon users — BUT the app has a HARD COMPILE ERROR that makes the webpack-dev-server overlay intercept every click in the preview: CrmPatientOnboarding.jsx imports a symbol that does not exist in crmApi.js, plus an unknown ESLint rule directive in CrmLabReconciliation.jsx.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/crm/reports/lab-reconciliation/details", "issue": "Requires required query params group_by + value; returns 422 when omitted. Not a defect but undocumented — consider marking them Optional or returning a clearer contract."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CrmPatientOnboarding.jsx", "issue": "Imports { getPatientSyncStatus } from '@/lib/crmApi' but no such export exists in /app/frontend/src/lib/crmApi.js. Webpack raises a hard compile error and the dev-server error overlay (iframe#webpack-dev-server-client-overlay) blocks ALL pointer events on /crm, /prescription-manager, and every other route — every nav link / button appears to hang/timeout.", "selector": "[data-testid=\"nav-patients\"], [data-testid=\"open-crm-btn\"], [data-testid=\"crm-sync-button\"]", "priority": "CRITICAL"},
+      {"component": "CrmLabReconciliation.jsx:170", "issue": "Uses '// eslint-disable-next-line react-hooks/exhaustive-deps' but this rule is NOT registered in the CRA ESLint config → ESLint fails → contributes to the compile overlay. Either add react-hooks plugin or remove the directive and fix deps.", "selector": "N/A", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Any CRM click (Patients nav, Sync Users, Open CRM back to /crm)", "issue": "Cannot be tested from UI because webpack overlay iframe intercepts pointer events site-wide until the compile error is resolved. Rendered DOM underneath is correct (CRM Dashboard layout, sidebar, stats cards, daily task list all present).", "affected_selectors": ["[data-testid=\"open-crm-btn\"]", "[data-testid=\"crm-sync-button\"]", "[data-testid=\"nav-patients\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_crm_api.py",
+    "/app/test_reports/pytest/pytest_crm_iter15.xml"
+  ],
+  "action_items": [
+    "FIX (CRITICAL): Add a named export getPatientSyncStatus in /app/frontend/src/lib/crmApi.js OR remove its import from /app/frontend/src/pages/crm/CrmPatientOnboarding.jsx (lines 20, 115). Without this the entire preview app is frozen behind the webpack overlay.",
+    "FIX (HIGH): In /app/frontend/src/pages/crm/CrmLabReconciliation.jsx around line 170, either (a) install/enable eslint-plugin-react-hooks so react-hooks/exhaustive-deps resolves, or (b) drop the eslint-disable directive and list the missing deps in the useEffect dependency array. Currently ESLint flags it as an unknown rule and the message surfaces in the dev overlay.",
+    "AFTER FRONTEND FIX: Re-run Playwright to verify Open CRM button → /crm navigation, sidebar nav between /crm/patients /crm/opportunities /crm/lab-tests /crm/lab-reconciliation, Sync Users toast, and patient detail tabs (Overview/Medicines/Vitals/Products/Lab Tests/Doctor Booking/Interactions).",
+    "OPTIONAL: Make group_by and value query params Optional on /api/crm/reports/lab-reconciliation/details, or document the contract in the spec."
+  ],
+  "critical_code_review_comments": [
+    "Frontend CRM import/export drift is the root cause of the preview being unclickable — a CI check (yarn build or eslint) before merge would have caught it.",
+    "Good: CRM router uses router-level Depends(require_pm) so every endpoint is PM-gated consistently; /api/crm/ correctly returns 401 anon, 403 for regular users, 200 for PM.",
+    "Good: Collection isolation is clean — only crm_patient_profiles, crm_custom_lab_tests, crm_lab_bookings, crm_laboratories, crm_revenue_conversions exist under crm_ prefix. Vitals + appointments correctly written to the SHARED collections (blood_glucose/pressure/body_metrics/appointments).",
+    "Good: sync/from-main-app is idempotent and role-filters prescription_manager/admin out of the patient universe.",
+    "Good: DELETE /api/crm/patients/{id} preserves main-app user + medications; GET after DELETE auto re-creates the CRM profile via ensure_crm_profile_for_user (verified).",
+    "Good: Lab booking auto-records revenue conversion (category=lab_test) when price>0; MTD revenue endpoint returns total+by_category+trend.",
+    "File size: /app/backend/routes/crm.py is ~2000+ lines. Consider splitting into crm/patients.py, crm/opportunities.py, crm/labs.py, crm/dashboard.py for maintainability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_crm_api.py (new)"
+  ],
+  "success_rate": {"backend": "100% (35/35)", "frontend": "25% (rendering OK, interaction blocked by webpack overlay)"},
+  "test_credentials": "PM session cookie=test_pm_crm_2026 (user 2069063a-50c1-4f99-99e5-5b5d2b21d7ab, role=prescription_manager). Regular user session cookie=test_user_crm_2026 (user f2eefadb-a488-495f-b93f-09300ceb112a advsarun@gmail.com). Both inserted fresh into db.sessions with 7-day expiry.",
+  "seed_data_creation": "Inserted 2 long-lived test session tokens into db.sessions (test_pm_crm_2026, test_user_crm_2026). Test run also created one TEST_ prefixed lab, one TEST_ custom lab test, one lab booking, one interaction, one appointment, vitals; all tagged TEST_ or on existing customer f2eefadb-…",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Backend CRM is GREEN — re-running /app/backend/tests/test_crm_api.py should pass 35/35. Frontend needs the two compile fixes above before any UI Playwright run is meaningful; the preview URL shows a full-screen red webpack overlay until those are resolved. Use injected sessions (test_pm_crm_2026 / test_user_crm_2026) — they live in db.sessions with 7-day expiry. REACT_APP_BACKEND_URL: https://careable-preview.preview.emergentagent.com.",
+  "rca of the issue": "Frontend hard compile error root cause: CrmPatientOnboarding.jsx line 20 imports { getPatientSyncStatus } but crmApi.js only exports { syncFromMainApp, syncPatient, … } — the ported repo referenced a helper that was not carried over. Webpack raises a fatal 'export not found' error, CRA's dev-server then shows the error overlay via an iframe that covers the viewport with pointer-events:auto, so every click (sidebar nav, Sync Users, Open CRM) appears hung with 'iframe webpack-dev-server-client-overlay intercepts pointer events'. Fix: add `export const getPatientSyncStatus = (id) => api.get('/patients/' + id + '/sync-status')` OR whichever URL the backend supports, OR simply drop the import + its usages (line 115, 156) in CrmPatientOnboarding.jsx. The second ESLint rule error in CrmLabReconciliation.jsx compounds the overlay. After these 2 fixes the overlay disappears and all data-testid clicks (open-crm-btn, nav-patients, crm-sync-button) will work."
+}

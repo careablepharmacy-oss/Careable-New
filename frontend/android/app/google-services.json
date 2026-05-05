@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "724643676917",
+    "project_id": "encare-68b6c",
+    "storage_bucket": "encare-68b6c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:724643676917:android:a5edffc81e2f396d57e31d",
+        "android_client_info": {
+          "package_name": "com.careable360plus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCE-LrMdtap4xaDZcKMAL-psMUVKHFj8Q8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

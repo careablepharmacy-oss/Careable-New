@@ -1,0 +1,19 @@
+{
+  "appId": "com.careable360plus.app",
+  "appName": "Careable 360+plus",
+  "webDir": "build",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "http"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#2BA89F",
+      "sound": "beep.wav"
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": ["alert", "badge", "sound"]
+    }
+  }
+}

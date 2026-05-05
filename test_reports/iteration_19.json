@@ -1,0 +1,58 @@
+{
+  "summary": "Tested JWT auth (register/login/me/refresh/logout/brute-force) against live preview URL and verified the splash slideshow + EmailAuthSheet → dashboard flow end-to-end for BOTH prescription_manager and user accounts. Backend: 12/13 pytest passes. Frontend: The reported bounce-back bug (JWT login → /prescription-manager → forced redirect to /) is NOT reproducing — both users land correctly and stay on their destination route with all API calls returning 200. Found ONE real backend defect: brute-force lockout broken behind k8s ingress (rotating client IPs make identifier unstable).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/auth/jwt-login",
+        "issue": "Brute-force protection does NOT trigger 429 in the preview/prod environment. Root cause: _client_id() in /app/backend/jwt_auth.py line 127 uses request.client.host, which behind the k8s ingress resolves to the rotating internal pod IP (observed 10.79.131.92 and 10.79.131.93 for sequential requests from the same external client). identifier = f'{ip}:{email}' therefore changes per request and the lockout counter never accumulates 5 fails under the same key. 8 consecutive wrong-password attempts all returned 401, none returned 429. Fix: read X-Forwarded-For / X-Real-IP header first (fallback to client.host) OR drop IP entirely and lockout by email alone."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Bundle / FCM",
+        "issues": [
+          "Console warning: 'FCM init failed (non-critical): Error: Cannot find module ../services/fcmService'. Warning only, does not break auth flow, but should be cleaned up — either add the missing fcmService.js stub or remove the dynamic import in App.js."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_jwt_auth.py",
+    "/app/test_reports/pytest/iter19_jwt_auth.xml"
+  ],
+  "action_items": [
+    "Fix brute-force identifier in /app/backend/jwt_auth.py::_client_id — use X-Forwarded-For (take first value) or lockout by email only. Current implementation is bypassable behind k8s ingress.",
+    "Clean up missing module warning for fcmService (either create stub or remove the failed dynamic import) — frontend bundle.js ~line 19658.",
+    "Re-verify reported bounce-back bug on the user's device — it was NOT reproducible via Playwright on a clean session. Suspect it was caused by a stale Emergent session_token cookie from the user's previous OAuth login colliding with the new JWT cookie. Consider explicitly clearing session_token cookie on /api/auth/jwt-login success to prevent the dual-auth ambiguity."
+  ],
+  "critical_code_review_comments": [
+    "api.js lines 25-32: the guard condition `!window.location.pathname.includes('/') || window.location.pathname.length > 1` is tautological — pathname ALWAYS contains '/', so the first clause is always false; only the length check matters. Any 401 on any non-root path triggers a hard `window.location.href='/'` which wipes React state. This is fragile — recommend replacing with a React-aware handler (e.g., emit an event the AuthProvider listens to) so state can be cleared cleanly without a full page reload.",
+    "auth.py get_current_user heuristic 'JWT has 2 dots' (lines 22-28, 26-27 of jwt_auth.try_jwt_auth): works for now but is brittle. A valid Emergent session_token could in theory contain two dots. Safer: try JWT decode first and on failure fall back to Emergent session lookup.",
+    "jwt_auth.py _client_id uses request.client.host which is the proxy IP behind k8s — broken for brute-force protection (see backend issue).",
+    "api.js 401 handler calls storageService.removeAuthenticated() but does NOT clear session_token or userData — leaves stale data. Use clearAuthData equivalent.",
+    "/api/auth/me heuristic: the Authorization header path in auth.py only treats 2-dot tokens as JWT; but try_jwt_auth is called as a fallback anyway. Works, but duplicated logic between auth.py lines 22-28 and jwt_auth.py try_jwt_auth lines 316-323 — consolidate."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_jwt_auth.py"
+  ],
+  "success_rate": {
+    "backend": "92% (12/13 pytest)",
+    "frontend": "100% (splash renders, Email sheet works, PM lands on /prescription-manager, customer lands on /home, no 401s, no bounce-back)"
+  },
+  "test_credentials": "careable360plus@gmail.com / Sarun123# (prescription_manager); encarelife@gmail.com / Sarun123# (user) — verified working via JWT login",
+  "seed_data_creation": "No seed mutations by test runner. test_jwt_auth.py registers disposable TEST_jwt_<uuid>@example.com accounts that remain in db.users (safe — not used elsewhere).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend JWT auth is solid. The user-reported bounce-back bug (JWT login → /prescription-manager → forced redirect to /) does NOT reproduce in a clean Playwright session — both prescription_manager and regular user flows work end-to-end with all API calls returning 200. If it still reproduces for the end user, it's almost certainly a stale Emergent session_token cookie from a prior OAuth sign-in conflicting with the new JWT cookie. Fix suggestion: have /api/auth/jwt-login also delete the server-side Emergent session and set-cookie session_token=; Max-Age=0. One real backend bug exists: brute-force lockout uses request.client.host which is the k8s ingress internal IP and rotates per request — identifier never stabilizes, so 5-fail threshold is never hit (verified by 8 consecutive wrong-password requests all returning 401). Reproduce: POST /api/auth/jwt-login with any bogus email 6+ times; expect 429 on attempt 6, actual = 401 forever.",
+  "rca_of_the_issue": {
+    "reported_bug": "After JWT login, user briefly lands on /prescription-manager then is redirected to /.",
+    "reproduction_attempts": "Performed clean Playwright session (cleared cookies + localStorage + sessionStorage) → clicked 'Sign in with Email' → filled careable360plus@gmail.com / Sarun123# → submitted. URL went to /prescription-manager at t+1s and STAYED there through t+6s. No 401 responses. Dashboard rendered with user list.",
+    "hypothesis": "The bug was likely triggered by a stale Emergent session_token cookie (set-cookie with samesite=none on *.preview.emergentagent.com) from a prior Google OAuth session persisting in the user's browser. When the user then logs in via JWT, two auth cookies coexist. If the Emergent session_token was expired server-side, /api/auth/me on dashboard mount would 401 and trigger the api.js window.location.href='/' redirect. Confirmation: with a freshly-cleared session there is no conflict and the flow works perfectly.",
+    "mitigation": "In /api/auth/jwt-login, explicitly delete the server-side Emergent session (if any) tied to that email AND set-cookie session_token='' Max-Age=0 to remove the client-side cookie, guaranteeing only the JWT cookies remain after JWT login. Also tighten the order of auth precedence in get_current_user (try JWT cookie first, only fall back to Emergent session if JWT absent)."
+  }
+}

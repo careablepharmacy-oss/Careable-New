@@ -1,0 +1,54 @@
+{
+  "short_name": "Careable 360+",
+  "name": "Careable 360+plus - Complete Healthcare Companion",
+  "description": "Your complete healthcare partner. Track medications, health metrics, appointments, and more.",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2BA89F",
+  "background_color": "#F8FAFB",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["health", "medical", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Log Glucose",
+      "short_name": "Glucose",
+      "description": "Log blood glucose reading",
+      "url": "/reports",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Medication",
+      "short_name": "Add Med",
+      "description": "Add new medication",
+      "url": "/medications/add",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "AI Chat",
+      "short_name": "Chat",
+      "description": "Talk to AI assistant",
+      "url": "/chat",
+      "icons": [{ "src": "logo192.png", "sizes": "192x192" }]
+    }
+  ]
+}

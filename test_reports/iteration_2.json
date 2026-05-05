@@ -1,0 +1,79 @@
+{
+  "summary": "Frontend-only code review and verification for medication invoice amount fields and monthly purchase section. All features implemented correctly. Full UI testing requires Google OAuth authentication.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "code_review_findings": {
+    "MedicationForm.jsx": {
+      "status": "CORRECT",
+      "findings": [
+        "✅ medicineInvoiceAmount field added (lines 57, 914-928) - appears for non-injection forms when isPrescriptionManager=true",
+        "✅ injectionInvoiceAmount field added (lines 60, 971-985) - appears for Injection form when isPrescriptionManager=true",
+        "✅ Both fields have proper data-testid attributes (medicine-invoice-amount-input, injection-invoice-amount-input)",
+        "✅ Fields correctly parsed as float and sent to backend (lines 407-417)",
+        "✅ Edit mode pre-populates invoice amounts from initialData (lines 106, 109)"
+      ]
+    },
+    "PrescriptionManagerDashboard.jsx": {
+      "status": "CORRECT",
+      "findings": [
+        "✅ Stock display added in medication list (lines 1021-1060)",
+        "✅ Tablet/Capsule stock shows count with color-coded badges (red <10, orange <20, green >=20)",
+        "✅ Injection stock shows vials count and IU remaining",
+        "✅ Cost per unit displayed when available"
+      ]
+    },
+    "MedicationsPage.jsx": {
+      "status": "CORRECT",
+      "findings": [
+        "✅ Monthly Purchase section implemented (lines 261-336)",
+        "✅ Cost calculation: (dosage × 30 days × cost_per_unit) + ₹100 shipping (lines 61-108)",
+        "✅ Invoice purchase amount: sum of medicine_invoice_amount + injection_invoice_amount (lines 111-115)",
+        "✅ Savings calculation: totalMonthlyCost - totalInvoiceAmount (line 129)",
+        "✅ Buy Medicines Now button with medicine_order_link redirect (lines 304-315, data-testid='buy-medicines-btn')",
+        "✅ Buy Injections Now button with injection_order_link redirect (lines 316-327, data-testid='buy-injections-btn')",
+        "✅ Section only shows when showPurchaseSection is true (totalInvoiceAmount > 0 OR totalMonthlyCost > shipping)"
+      ]
+    },
+    "Backend models.py": {
+      "status": "CORRECT",
+      "findings": [
+        "✅ medicine_invoice_amount field added (lines 95, 122, 147)",
+        "✅ injection_invoice_amount field added (lines 98, 125, 150)",
+        "✅ Fields are Optional[float] with None default"
+      ]
+    }
+  },
+  "test_report_links": [
+    "/app/frontend/src/components/MedicationForm.jsx",
+    "/app/frontend/src/pages/PrescriptionManagerDashboard.jsx",
+    "/app/frontend/src/pages/MedicationsPage.jsx",
+    "/app/backend/models.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "All requested features are correctly implemented",
+    "Code follows existing patterns and conventions",
+    "Proper conditional rendering based on isPrescriptionManager prop",
+    "Monthly cost calculation logic is correct: (daily dosage × 30 days × cost_per_unit) + ₹100 shipping"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only test)",
+    "frontend": "100% (code review passed)"
+  },
+  "test_credentials": {
+    "Admin (Prescription Manager)": "diabexpertonline@gmail.com",
+    "Staff User": "auctionpicksindia@gmail.com"
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All invoice amount fields and monthly purchase section features are correctly implemented. To manually test: 1) Login as diabexpertonline@gmail.com (admin), 2) Go to /prescription-manager, 3) Select a user and click 'Manage Medications', 4) Add/Edit a medication to see invoice amount fields, 5) Login as auctionpicksindia@gmail.com (staff user), 6) Go to /medications to see Monthly Purchase section (requires medications with cost_per_unit or invoice amounts set by admin)."
+}

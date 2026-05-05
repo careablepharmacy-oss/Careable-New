@@ -1,0 +1,44 @@
+{
+  "summary": "PM/CRM full parity (iteration 17) verified. Backend: 14/14 new parity tests + 35/35 previous CRM tests green. CRM medicine/appointment/lab-booking endpoints correctly dual-write to shared db.medications/db.appointments and CRM additions are visible via the main PM endpoints (proves mobile/customer app will see them). New /api/crm/onboarding/pending endpoint works and is auth-gated. Frontend: Onboarding card + filter-onboarding tab + onboarding-task-* items render correctly on /crm; PM Dashboard no longer shows FlaskConical/Lab Test button on user rows; PM Lab Test Booking modal has been removed. All 4 CRM smoke pages load without webpack overlay or console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/prescription-manager/user/{id}/appointments", "issue": "Default limit=5 silently hides older test data. Minor — callers must pass ?limit= if they need more than 5. Documenting for future reference."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/crm dashboard (revenue charts)", "issues": ["Recharts console warning: 'The width(-1) and height(-1) of chart should be greater than 0' — chart container has no explicit minWidth/minHeight, cosmetic only"]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_crm_pm_parity.py",
+    "/app/backend/tests/test_crm_api.py",
+    "/app/test_reports/pytest/iter17_parity.xml"
+  ],
+  "action_items": [
+    "(Cosmetic) Fix Recharts width/height warning on CRM dashboard by adding minWidth/minHeight to chart container or giving the ResponsiveContainer a defined parent size.",
+    "(Optional polish) Add a minor Recharts ResponsiveContainer wrapper fix to silence the -1 width/height warning."
+  ],
+  "critical_code_review_comments": [
+    "crm.py lines 962-1020 (add_medicine): correctly reuses main app Medication pydantic model + calls generate_adherence_logs_for_medication — strong parity guarantee.",
+    "crm.py lines 1324-1396 (book_lab_test): clean dual-write pattern — writes to crm_lab_bookings and mirrors into db.appointments with source='crm_lab_booking'. OneSignal call is guarded by try/except so it will not fail the request if push creds are misconfigured. Good.",
+    "crm.py lines 689-720 (onboarding/pending): sort desc by created_at + 200 limit is sensible. Consider adding pagination if dataset grows.",
+    "PM appointments endpoint default limit=5 is tight; safe but surprising when tested from scripts."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_crm_pm_parity.py (new — 14 tests for PM/CRM parity)"
+  ],
+  "success_rate": {
+    "backend": "100% (49/49 = 35 existing CRM + 14 new parity; 1 skipped because PM adherence GET is POST-only)",
+    "frontend": "100% (all required UI assertions pass: onboarding card, filter tab, tab render, PM lab removal, 4 smoke pages load cleanly)"
+  },
+  "test_credentials": "PM session_token=test_pm_crm_2026 (diabexpertonline@gmail.com, id 2069063a-50c1-4f99-99e5-5b5d2b21d7ab). Customer id f2eefadb-a488-495f-b93f-09300ceb112a (Sarun Kumar / advsarun@gmail.com). Both already pre-seeded in db.sessions.",
+  "seed_data_creation": "Tests create TEST_-prefixed medications, appointments and lab bookings during run; medication is deleted in delete test, appointments/lab bookings persist (by design) but are clearly labeled TEST_<uuid> and do not interfere with production flows.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 17 parity tests are stable. If backend changes happen to Medication or Appointment pydantic models, the test payloads in test_crm_pm_parity.py (TestMedicineParity.test_crm_add_medicine_writes_to_db_medications and TestAppointmentParity.test_crm_create_appointment_writes_shared) may need matching updates — in particular schedule.start_date is required and dosage_timings[].amount must be a STRING. PM appointments endpoint GET requires ?limit=50 (default 5) when asserting inclusion of newly-created apts. Frontend auth pattern from iteration 16 still works (add_init_script sets localStorage before first goto).",
+  "rca of the issue": "No open issues. Both parity regressions raised during test authoring (1) Medication pydantic requires schedule.start_date + string amount, (2) PM GET /appointments default limit=5, were quickly understood via 500 response bodies and test payload/query param updates — they were test-setup issues, not code bugs."
+}
