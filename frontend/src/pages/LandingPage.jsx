@@ -149,28 +149,26 @@ const LandingPage = () => {
   return (
     <>
       <div
-        className="relative min-h-screen w-full overflow-hidden bg-[#0F2A47] flex flex-col"
+        className="relative min-h-screen w-full overflow-hidden bg-[#E6F2F4] flex flex-col"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         data-testid="splash-carousel"
       >
-        {/* Full-bleed image carousel */}
-        <div className="relative flex-1 w-full overflow-hidden">
+        {/* Image carousel - contain to ensure full image (logo + tagline) is always visible */}
+        <div className="relative flex-1 w-full overflow-hidden bg-[#E6F2F4]">
           {IMAGE_SLIDES.map((slide, idx) => (
             <img
               key={idx}
               src={slide.src}
               alt={slide.alt}
               draggable={false}
-              className={`absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-700 ease-out ${
+              className={`absolute inset-0 w-full h-full object-contain select-none transition-opacity duration-700 ease-out ${
                 currentSlide === idx ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
               aria-hidden={currentSlide !== idx}
             />
           ))}
-          {/* Gradient overlay at bottom for legibility */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/35 via-black/10 to-transparent z-20" />
         </div>
 
         {/* Bottom CTA panel — present on EVERY slide */}
