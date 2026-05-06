@@ -355,6 +355,18 @@ async def seed():
         "state": customer["state"],
         "lifecycle_stage": "active_patient",
         "onboarding_completed": True,
+        # Medical Information (so the panel renders for the demo customer)
+        "main_disease": "Type 2 Diabetes",
+        "diseases": ["Type 2 Diabetes", "Hypertension"],
+        "consulting_doctor_name": "Dr. Anand Iyer",
+        "clinic_hospital_details": "Apollo Clinic, Indiranagar, Bengaluru",
+        "last_doctor_visit_date": (today_dt - timedelta(days=20)).strftime("%Y-%m-%d"),
+        "next_doctor_visit_due": (today_dt + timedelta(days=10)).strftime("%Y-%m-%d"),
+        "regular_lab_details": "Thyrocare - HbA1c & Lipid panel",
+        "last_lab_visit_date": (today_dt - timedelta(days=45)).strftime("%Y-%m-%d"),
+        "next_lab_visit_due": (today_dt + timedelta(days=15)).strftime("%Y-%m-%d"),
+        "mobility_status": "Independent - walks unaided",
+        "other_critical_info": "Allergic to sulfa drugs. Family history of cardiac issues.",
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
