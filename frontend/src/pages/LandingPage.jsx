@@ -7,13 +7,12 @@ import EmailAuthSheet from '../components/EmailAuthSheet';
 
 let isProcessingGlobal = false;
 
-// 5 image slides
+// 4 image slides
 const IMAGE_SLIDES = [
   { src: '/splash/slide_1.jpg', alt: 'Smart Reminders' },
   { src: '/splash/slide_2.jpg', alt: 'Appointments' },
   { src: '/splash/slide_3.jpg', alt: 'Health Shopping' },
   { src: '/splash/slide_4.jpg', alt: 'Health Tracking' },
-  { src: '/splash/slide_5.jpg', alt: 'Health Wallets' },
 ];
 
 const AUTO_ADVANCE_MS = 4500;
