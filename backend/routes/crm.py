@@ -746,6 +746,35 @@ async def ensure_all_crm_profiles() -> int:
     return created
 
 
+async def compute_adherence_rate_7d(user_id: str) -> Optional[int]:
+    """Compute medication adherence % over the last 7 days for a user.
+
+    Mirrors the formula used by the user-facing Reports page:
+        rate = taken / (taken + skipped + missed)          # ignores "pending"
+
+    Returns an integer 0-100, or None if the user has no non-pending logs
+    in the window (so the UI can render "—").
+    """
+    if not user_id:
+        return None
+    today = datetime.now(timezone(timedelta(hours=5, minutes=30))).date()
+    start = (today - timedelta(days=6)).strftime("%Y-%m-%d")  # inclusive 7-day window
+    end = today.strftime("%Y-%m-%d")
+    total = await db.adherence_logs.count_documents({
+        "user_id": user_id,
+        "date": {"$gte": start, "$lte": end},
+        "status": {"$ne": "pending"},
+    })
+    if total == 0:
+        return None
+    taken = await db.adherence_logs.count_documents({
+        "user_id": user_id,
+        "date": {"$gte": start, "$lte": end},
+        "status": "taken",
+    })
+    return round((taken / total) * 100)
+
+
 async def attach_medications_to_profile(profile: Dict) -> Dict:
     """Pull the patient's medications from the main app medications collection and inject into profile.
     Also overlay the live db.users identity (name/phone/etc.) so CRM always reflects the
@@ -753,6 +782,7 @@ async def attach_medications_to_profile(profile: Dict) -> Dict:
     user_id = profile.get("id")
     if not user_id:
         profile["medicines"] = []
+        profile["adherence_rate"] = None
         return profile
     # Overlay shared identity fields from db.users (source of truth for identity in PM)
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
@@ -768,6 +798,9 @@ async def attach_medications_to_profile(profile: Dict) -> Dict:
         if profile.get("age", 0) and profile["age"] >= 65:
             detected.append("Elderly Care")
         profile["diseases"] = list(set(detected))
+    # Live-compute adherence from the same source the Reports page uses (last 7 days).
+    # This overrides any stored static value so CRM and the user-facing report always agree.
+    profile["adherence_rate"] = await compute_adherence_rate_7d(user_id)
     return profile
 
 
@@ -973,9 +1006,9 @@ async def compute_priority_reason(patient: Dict) -> str:
         elif stock.get("is_low"):
             reasons.append(f"{med.get('name', 'Medicine')} running low ({stock['days_left']} days left)")
 
-    # Check adherence
-    adherence = patient.get("adherence_rate", 100)
-    if adherence < 70:
+    # Check adherence (computed live from last-7-day adherence logs)
+    adherence = patient.get("adherence_rate")
+    if adherence is not None and adherence < 70:
         reasons.append(f"Low adherence ({adherence}%)")
 
     # Check doctor visit overdue (3+ months)
@@ -1947,13 +1980,14 @@ async def generate_opportunities():
                 ).model_dump())
 
         # ---- 5) Adherence task (revenue=0, kept as alert only) ----
-        if (patient.get("adherence_rate") or 100) < 70:
+        adherence_rate = patient.get("adherence_rate")
+        if adherence_rate is not None and adherence_rate < 70:
             opportunities.append(Opportunity(
                 patient_id=patient_id,
                 patient_name=patient_name,
                 patient_phone=patient_phone,
                 type="adherence",
-                description=f"Low adherence ({patient['adherence_rate']}%) - needs follow-up",
+                description=f"Low adherence ({adherence_rate}%) - needs follow-up",
                 priority="high",
                 expected_revenue=0.0,
             ).model_dump())

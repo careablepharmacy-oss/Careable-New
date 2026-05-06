@@ -397,8 +397,8 @@ export default function Patients() {
                       <div className="text-center">
                         <div className="flex items-center gap-1 text-slate-500">
                           <Activity className="h-4 w-4" />
-                          <span className={`font-medium ${patient.adherence_rate < 70 ? 'text-red-500' : 'text-green-500'}`}>
-                            {patient.adherence_rate}%
+                          <span className={`font-medium ${patient.adherence_rate == null ? 'text-slate-400' : patient.adherence_rate < 70 ? 'text-red-500' : 'text-green-500'}`}>
+                            {patient.adherence_rate == null ? '—' : `${patient.adherence_rate}%`}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400">Adherence</p>

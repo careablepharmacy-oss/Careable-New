@@ -1395,12 +1395,14 @@ export default function PatientDetail() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className={`p-3 rounded-xl ${patient.adherence_rate >= 70 ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
+            <div className={`p-3 rounded-xl ${patient.adherence_rate == null ? 'bg-slate-50 text-slate-400' : patient.adherence_rate >= 70 ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'}`}>
               <Activity className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{patient.adherence_rate}%</p>
-              <p className="text-xs text-slate-500">Adherence</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {patient.adherence_rate == null ? '—' : `${patient.adherence_rate}%`}
+              </p>
+              <p className="text-xs text-slate-500">Adherence (7d)</p>
             </div>
           </CardContent>
         </Card>
