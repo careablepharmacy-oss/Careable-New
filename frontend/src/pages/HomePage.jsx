@@ -622,8 +622,8 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Buy Medicine CTA Section - Only show when Prescription Manager has set order link */}
-        {(purchaseLinks?.medicine_order_link || purchaseLinks?.injection_order_link) && (
+        {/* Buy Medicine CTA Section - Only show when Prescription Manager has set an invoice link */}
+        {(purchaseLinks?.medicine_invoice_link || purchaseLinks?.injection_invoice_link) && (
         <div className="relative overflow-hidden">
           <style>
             {`
