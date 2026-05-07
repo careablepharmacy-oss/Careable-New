@@ -134,24 +134,20 @@ const MedicationsPage = () => {
     
     // Use user-level purchase links instead of medication-level
     const totalInvoiceAmount = (purchaseLinks?.medicine_invoice_amount || 0) + (purchaseLinks?.injection_invoice_amount || 0);
-    const medicineOrderLink = purchaseLinks?.medicine_order_link || null;
     const medicineInvoiceLink = purchaseLinks?.medicine_invoice_link || null;
-    const injectionOrderLink = purchaseLinks?.injection_order_link || null;
     const injectionInvoiceLink = purchaseLinks?.injection_invoice_link || null;
     const hasMedicineLinks = !!medicineInvoiceLink && hasMedicines;
     const hasInjectionLinks = !!injectionInvoiceLink && hasInjections;
-    
+
     const savings = totalMonthlyCost - totalInvoiceAmount;
-    
+
     return {
       totalMonthlyCost: Math.round(totalMonthlyCost * 100) / 100,
       totalInvoiceAmount: Math.round(totalInvoiceAmount * 100) / 100,
       savings: Math.round(savings * 100) / 100,
       hasMedicineLinks,
       hasInjectionLinks,
-      medicineOrderLink,
       medicineInvoiceLink,
-      injectionOrderLink,
       injectionInvoiceLink,
       showPurchaseSection: !!medicineInvoiceLink || !!injectionInvoiceLink
     };
@@ -350,46 +346,23 @@ const MedicationsPage = () => {
                 Order Tracking
               </h4>
               
-              {costCalculations.medicineOrderLink || costCalculations.injectionOrderLink ? (
-                <div className="grid grid-cols-1 gap-2">
-                  {costCalculations.medicineOrderLink && (
-                    <Button 
-                      onClick={() => { window.location.href = costCalculations.medicineOrderLink; }}
-                      variant="outline"
-                      className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 font-medium py-4"
-                      data-testid="track-medicines-btn"
-                    >
-                      <Package className="w-4 h-4 mr-2" />
-                      Track Medicine Order
-                    </Button>
-                  )}
-                  {costCalculations.injectionOrderLink && (
-                    <Button 
-                      onClick={() => { window.location.href = costCalculations.injectionOrderLink; }}
-                      variant="outline"
-                      className="w-full bg-white/10 border-white/30 text-white hover:bg-white/20 font-medium py-4"
-                      data-testid="track-injections-btn"
-                    >
-                      <Package className="w-4 h-4 mr-2" />
-                      Track Injection Order
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-white/10 rounded-lg p-4 text-center">
-                  <p className="text-blue-100 text-sm mb-3">
-                    No active orders to track
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/profile?tab=orders')}
-                    className="bg-white text-blue-600 hover:bg-blue-50 font-medium"
-                    data-testid="track-my-order-btn"
-                  >
-                    <Package className="w-4 h-4 mr-2" />
-                    Track My Order
-                  </Button>
-                </div>
-              )}
+              {/* Always send the user to the unified Profile → Orders tracking view.
+                  The previous "Track Medicine/Injection Order" buttons (which opened
+                  legacy *_order_link URLs) are removed in favour of the live tracking
+                  attached to each paid order in inv_orders. */}
+              <div className="bg-white/10 rounded-lg p-4 text-center">
+                <p className="text-blue-100 text-sm mb-3">
+                  Live status for any active orders is shown in your profile.
+                </p>
+                <Button
+                  onClick={() => navigate('/profile?tab=orders')}
+                  className="bg-white text-blue-600 hover:bg-blue-50 font-medium"
+                  data-testid="track-my-order-btn"
+                >
+                  <Package className="w-4 h-4 mr-2" />
+                  Track My Order
+                </Button>
+              </div>
             </div>
             
             {!costCalculations.hasMedicineLinks && !costCalculations.hasInjectionLinks && (

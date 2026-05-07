@@ -53,10 +53,8 @@ const MedicationForm = ({
     tabletsPerStrip: '',
     costPerUnit: '',
     includeInInvoice: true,
-    medicineOrderLink: '',
     medicineInvoiceLink: '',
     medicineInvoiceAmount: '',
-    injectionOrderLink: '',
     injectionInvoiceLink: '',
     injectionInvoiceAmount: ''
   });
@@ -120,10 +118,8 @@ const MedicationForm = ({
         tabletsPerStrip: initialData.tablets_per_strip != null ? String(initialData.tablets_per_strip) : '',
         costPerUnit: initialData.cost_per_unit || '',
         includeInInvoice: initialData.include_in_invoice !== false,
-        medicineOrderLink: initialData.medicine_order_link || '',
         medicineInvoiceLink: initialData.medicine_invoice_link || '',
         medicineInvoiceAmount: initialData.medicine_invoice_amount || '',
-        injectionOrderLink: initialData.injection_order_link || '',
         injectionInvoiceLink: initialData.injection_invoice_link || '',
         injectionInvoiceAmount: initialData.injection_invoice_amount || ''
       });
@@ -469,17 +465,11 @@ const MedicationForm = ({
         medicationData.cost_per_unit = parseFloat(formData.costPerUnit) || 0;
       }
       medicationData.include_in_invoice = formData.includeInInvoice;
-      if (formData.medicineOrderLink) {
-        medicationData.medicine_order_link = formData.medicineOrderLink;
-      }
       if (formData.medicineInvoiceLink) {
         medicationData.medicine_invoice_link = formData.medicineInvoiceLink;
       }
       if (formData.medicineInvoiceAmount) {
         medicationData.medicine_invoice_amount = parseFloat(formData.medicineInvoiceAmount) || 0;
-      }
-      if (formData.injectionOrderLink) {
-        medicationData.injection_order_link = formData.injectionOrderLink;
       }
       if (formData.injectionInvoiceLink) {
         medicationData.injection_invoice_link = formData.injectionInvoiceLink;

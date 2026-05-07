@@ -3,16 +3,11 @@ import { Link as LinkIcon, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import apiService from "../services/api";
 
-const DEFAULT_MEDICINE_ORDER_LINK = "https://encaremedicineordertrackdummy.netlify.app";
-
 const EMPTY_FORM = {
-  medicine_order_link: "",
   medicine_invoice_link: "",
   medicine_invoice_amount: "",
-  injection_order_link: "",
   injection_invoice_link: "",
   injection_invoice_amount: "",
-  product_order_link: "",
   product_invoice_link: "",
   product_invoice_amount: "",
 };
@@ -47,21 +42,18 @@ export default function PurchaseLinksPanel({
     try {
       const links = await apiService.getUserPurchaseLinks(userId);
       setForm({
-        medicine_order_link: links.medicine_order_link || DEFAULT_MEDICINE_ORDER_LINK,
         medicine_invoice_link: links.medicine_invoice_link || "",
         medicine_invoice_amount:
           links.medicine_invoice_amount != null ? String(links.medicine_invoice_amount) : "",
-        injection_order_link: links.injection_order_link || "",
         injection_invoice_link: links.injection_invoice_link || "",
         injection_invoice_amount:
           links.injection_invoice_amount != null ? String(links.injection_invoice_amount) : "",
-        product_order_link: links.product_order_link || "",
         product_invoice_link: links.product_invoice_link || "",
         product_invoice_amount:
           links.product_invoice_amount != null ? String(links.product_invoice_amount) : "",
       });
     } catch (e) {
-      setForm({ ...EMPTY_FORM, medicine_order_link: DEFAULT_MEDICINE_ORDER_LINK });
+      setForm({ ...EMPTY_FORM });
     } finally {
       setLoading(false);
     }
@@ -101,13 +93,10 @@ export default function PurchaseLinksPanel({
     setSaving(true);
     try {
       const emptyLinks = {
-        medicine_order_link: null,
         medicine_invoice_link: null,
         medicine_invoice_amount: null,
-        injection_order_link: null,
         injection_invoice_link: null,
         injection_invoice_amount: null,
-        product_order_link: null,
         product_invoice_link: null,
         product_invoice_amount: null,
       };
@@ -143,15 +132,6 @@ export default function PurchaseLinksPanel({
             </p>
             <div className="space-y-4">
               <FieldRow
-                label="Medicine Order Link"
-                type="url"
-                placeholder="https://pharmacy-site.com/order/..."
-                value={form.medicine_order_link}
-                onChange={v => update("medicine_order_link", v)}
-                accent="blue"
-                testid="pm-medicine-order-link"
-              />
-              <FieldRow
                 label="Medicine Invoice Link"
                 type="url"
                 placeholder="https://drive.google.com/invoice/..."
@@ -183,15 +163,6 @@ export default function PurchaseLinksPanel({
             </p>
             <div className="space-y-4">
               <FieldRow
-                label="Injection Order Link"
-                type="url"
-                placeholder="https://pharmacy-site.com/order/..."
-                value={form.injection_order_link}
-                onChange={v => update("injection_order_link", v)}
-                accent="purple"
-                testid="pm-injection-order-link"
-              />
-              <FieldRow
                 label="Injection Invoice Link"
                 type="url"
                 placeholder="https://drive.google.com/invoice/..."
@@ -222,15 +193,6 @@ export default function PurchaseLinksPanel({
               These links will be used for non-medicine product purchases (devices, supplements, accessories, etc.).
             </p>
             <div className="space-y-4">
-              <FieldRow
-                label="Product Order Link"
-                type="url"
-                placeholder="https://store.com/order/..."
-                value={form.product_order_link}
-                onChange={v => update("product_order_link", v)}
-                accent="emerald"
-                testid="pm-product-order-link"
-              />
               <FieldRow
                 label="Product Invoice Link"
                 type="url"

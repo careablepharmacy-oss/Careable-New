@@ -1764,13 +1764,6 @@ export default function PatientDetail() {
                             )}
                           </div>
                           <div className="flex gap-2">
-                            {med.medicine_order_link && (
-                              <a href={med.medicine_order_link} target="_blank" rel="noopener noreferrer">
-                                <Button size="sm" variant="outline" className="text-xs">
-                                  <ExternalLink className="h-3 w-3 mr-1" /> Order
-                                </Button>
-                              </a>
-                            )}
                             <Button
                               size="sm"
                               variant="outline"

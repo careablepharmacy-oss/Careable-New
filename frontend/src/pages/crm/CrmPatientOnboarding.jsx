@@ -55,9 +55,9 @@ export default function PatientOnboarding() {
     last_doctor_visit_date: "", regular_lab_details: "", last_lab_visit_date: "",
     mobility_status: "", other_critical_info: "", marketing_consent: "",
     relative_name: "", relative_email: "", relative_whatsapp: "",
-    medicine_order_link: "", medicine_invoice_link: "", medicine_invoice_amount: "",
-    injection_order_link: "", injection_invoice_link: "", injection_invoice_amount: "",
-    product_order_link: "", product_invoice_link: "", product_invoice_amount: "",
+    medicine_invoice_link: "", medicine_invoice_amount: "",
+    injection_invoice_link: "", injection_invoice_amount: "",
+    product_invoice_link: "", product_invoice_amount: "",
     priority: "normal", onboarding_completed: false
   });
   const [originalForm, setOriginalForm] = useState(null);
@@ -142,13 +142,10 @@ export default function PatientOnboarding() {
         relative_name: d.relative_name || "",
         relative_email: d.relative_email || "",
         relative_whatsapp: d.relative_whatsapp || "",
-        medicine_order_link: d.medicine_order_link || "",
         medicine_invoice_link: d.medicine_invoice_link || "",
         medicine_invoice_amount: d.medicine_invoice_amount != null ? String(d.medicine_invoice_amount) : "",
-        injection_order_link: d.injection_order_link || "",
         injection_invoice_link: d.injection_invoice_link || "",
         injection_invoice_amount: d.injection_invoice_amount != null ? String(d.injection_invoice_amount) : "",
-        product_order_link: d.product_order_link || "",
         product_invoice_link: d.product_invoice_link || "",
         product_invoice_amount: d.product_invoice_amount != null ? String(d.product_invoice_amount) : "",
         priority: d.priority || "normal",

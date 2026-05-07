@@ -32,15 +32,6 @@ const PrescriptionManagerDashboard = () => {
   const [showDoctorBookingModal, setShowDoctorBookingModal] = useState(false);
   const [showLabBookingModal, setShowLabBookingModal] = useState(false);
   const [showPurchaseLinksModal, setShowPurchaseLinksModal] = useState(false);
-  const [purchaseLinksForm, setPurchaseLinksForm] = useState({
-    medicine_order_link: '',
-    medicine_invoice_link: '',
-    medicine_invoice_amount: '',
-    injection_order_link: '',
-    injection_invoice_link: '',
-    injection_invoice_amount: ''
-  });
-  const DEFAULT_MEDICINE_ORDER_LINK = 'https://encaremedicineordertrackdummy.netlify.app';
   const [purchaseLinksLoading, setPurchaseLinksLoading] = useState(false);
   const [bookingForm, setBookingForm] = useState({
     date: '',

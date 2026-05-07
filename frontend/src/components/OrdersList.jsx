@@ -209,7 +209,7 @@ const EcommerceCard = ({ order, onClick }) => {
 
 // ---- Pending invoice link card (from user_purchase_links — invoice issued, not paid yet) ----
 const InvoiceCard = ({ invoiceOrder, onClick }) => {
-  const { type, amount, date, hasOrderLink } = invoiceOrder;
+  const { type, amount, date } = invoiceOrder;
   const cfg = typeTagStyles[type];
   return (
     <div
@@ -232,9 +232,7 @@ const InvoiceCard = ({ invoiceOrder, onClick }) => {
       </div>
 
       <div className="mb-2 px-3 py-2 bg-amber-50 rounded-lg">
-        <p className="text-[11px] text-amber-800 font-medium">
-          Tap to {hasOrderLink ? 'open your order link' : 'open the invoice'}
-        </p>
+        <p className="text-[11px] text-amber-800 font-medium">Tap to open the invoice</p>
       </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-gray-50">
@@ -256,23 +254,19 @@ const buildInvoiceCardsFromLinks = (links, paidOrders) => {
   const hasAnyPaid = (paidOrders || []).length > 0;
   const list = [];
   const types = [
-    { type: 'medicine', orderKey: 'medicine_order_link', invKey: 'medicine_invoice_link', amtKey: 'medicine_invoice_amount' },
-    { type: 'injection', orderKey: 'injection_order_link', invKey: 'injection_invoice_link', amtKey: 'injection_invoice_amount' },
-    { type: 'product', orderKey: 'product_order_link', invKey: 'product_invoice_link', amtKey: 'product_invoice_amount' },
+    { type: 'medicine',  invKey: 'medicine_invoice_link',  amtKey: 'medicine_invoice_amount' },
+    { type: 'injection', invKey: 'injection_invoice_link', amtKey: 'injection_invoice_amount' },
+    { type: 'product',   invKey: 'product_invoice_link',   amtKey: 'product_invoice_amount' },
   ];
-  types.forEach(({ type, orderKey, invKey, amtKey }) => {
-    const orderLink = links[orderKey];
+  types.forEach(({ type, invKey, amtKey }) => {
     const invLink = links[invKey];
     const amount = links[amtKey];
     const hasInvoice = invLink && String(invLink).trim() !== '';
-    const hasOrderLink = orderLink && String(orderLink).trim() !== '';
-    if (!hasInvoice && !hasOrderLink) return;
+    if (!hasInvoice) return;
     if (hasAnyPaid) return; // skip stale invoice cards once a paid order exists
     list.push({
       type, amount, date: links.updated_at,
-      orderLink: hasOrderLink ? orderLink : null,
-      invoiceLink: hasInvoice ? invLink : null,
-      hasOrderLink,
+      invoiceLink: invLink,
     });
   });
   return list;
@@ -310,8 +304,7 @@ const OrdersList = ({ compact = false }) => {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const handleInvoiceCardClick = (inv) => {
-    const url = inv.orderLink || inv.invoiceLink;
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    if (inv.invoiceLink) window.open(inv.invoiceLink, '_blank', 'noopener,noreferrer');
   };
 
   const totalItems = paidOrders.length + ecomOrders.length + invoiceCards.length;
