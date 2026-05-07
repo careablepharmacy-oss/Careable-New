@@ -12,7 +12,7 @@ import {
   User, Lock, Download, Info, Loader2, Send, AlarmClock, UserPlus,
   Package, Settings as SettingsIcon, LifeBuoy
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from '../hooks/use-toast';
 import InstallPWA from '../components/InstallPWA';
 import OrdersList from '../components/OrdersList';
@@ -37,8 +37,14 @@ const SectionHeader = ({ icon: Icon, title, subtitle }) => (
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  // Honor ?tab=orders|profile|settings|help deep links (e.g. from Meds "Track My Order")
+  const initialTab = (() => {
+    const t = new URLSearchParams(location.search).get('tab');
+    return ['profile', 'orders', 'settings', 'help'].includes(t) ? t : 'profile';
+  })();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [testPushLoading, setTestPushLoading] = useState(false);
   const [pushDebugInfo, setPushDebugInfo] = useState(null);

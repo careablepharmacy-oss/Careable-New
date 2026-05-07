@@ -153,7 +153,7 @@ const MedicationsPage = () => {
       medicineInvoiceLink,
       injectionOrderLink,
       injectionInvoiceLink,
-      showPurchaseSection: totalInvoiceAmount > 0 || totalMonthlyCost > SHIPPING_COST
+      showPurchaseSection: !!medicineInvoiceLink || !!injectionInvoiceLink
     };
   }, [medications, purchaseLinks]);
 
@@ -381,12 +381,12 @@ const MedicationsPage = () => {
                     No active orders to track
                   </p>
                   <Button 
-                    onClick={() => navigate('/medications')}
+                    onClick={() => navigate('/profile?tab=orders')}
                     className="bg-white text-blue-600 hover:bg-blue-50 font-medium"
-                    data-testid="buy-now-from-tracking-btn"
+                    data-testid="track-my-order-btn"
                   >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Buy Now
+                    <Package className="w-4 h-4 mr-2" />
+                    Track My Order
                   </Button>
                 </div>
               )}
