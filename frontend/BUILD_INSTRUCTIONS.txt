@@ -31,7 +31,7 @@ npx cap open android
 - frontend/package.json - Dependencies
 
 ## Production Backend URL
-https://careable-preview.preview.emergentagent.com
+https://careable-clone-1.preview.emergentagent.com
 
 ## Notes
 - The .env file is already configured for production

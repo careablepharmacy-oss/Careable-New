@@ -833,7 +833,7 @@ agent_communication:
       - Minimal Data Support: ✅ CONFIRMED (name, phone)
       - Complete Data Support: ✅ CONFIRMED (all requested fields)
       
-      **Backend URL Tested:** https://careable-preview.preview.emergentagent.com/api
+      **Backend URL Tested:** https://careable-clone-1.preview.emergentagent.com/api
       
       **Conclusion:** Profile update endpoint is working correctly and meets all review requirements. The endpoint is properly secured, accessible, and handles both minimal and complete profile data as requested. Backend logs show successful operations with authenticated users.
   - agent: "testing"
@@ -854,7 +854,7 @@ agent_communication:
       - Returns 404 for non-existent medications
       - Returns 200 with success message for successful deletions
       
-      **Backend URL Tested:** https://careable-preview.preview.emergentagent.com/api
+      **Backend URL Tested:** https://careable-clone-1.preview.emergentagent.com/api
       
       **Conclusion:** DELETE medication endpoint is working correctly and meets all requirements. The endpoint is properly secured, accessible, and implements proper CRUD functionality. All medication CRUD operations (Create, Read, Update, Delete) are fully functional.
   - agent: "main"
@@ -1311,7 +1311,7 @@ agent_communication:
       
       **Root Cause:**
       The native Android app's frontend was pointing to the WRONG backend URL:
-      - ❌ OLD: https://careable-preview.preview.emergentagent.com (preview environment)
+      - ❌ OLD: https://careable-clone-1.preview.emergentagent.com (preview environment)
       - ✅ NEW: https://medremind-pwa.emergent.host (deployed PWA backend)
       
       **Why This Caused Issues:**
@@ -1769,7 +1769,7 @@ agent_communication:
       
       **FIX 1: Production Backend URL ✅**
       - Changed: `.env` from preview backend to production
-      - Before: `https://careable-preview.preview.emergentagent.com`
+      - Before: `https://careable-clone-1.preview.emergentagent.com`
       - After: `https://medremind-pwa.emergent.host`
       - Result: App will work 24/7 independent of agent status
       

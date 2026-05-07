@@ -1,0 +1,132 @@
+<analysis>**original_problem_statement**: Recreate the public GitHub repository Encare (Careable-Project-Ver-1) identical to the original app, maintaining design, layout, colors, and structure. PRODUCT REQUIREMENTS include full PWA/Capacitor setup with React frontend, FastAPI backend, and MongoDB. Later requests introduced minor functional modifications to the clone (splash images, AI disease detection fixes, adherence metric syncing, and UI CTA logic updates).
+
+**User's preferred language**: English (Please INSTRUCT next agent to respond in English)
+
+**what currently exists?**: A fully functional full-stack clone of the Careable 360+plus health app. It features a React frontend (shadcn components, Tailwind) and FastAPI backend connected to MongoDB. Data seeding is functional. Auth is via Emergent Google OAuth and JWT. The app includes CRM patient dashboards, AI-powered disease detection from medicines (via Gemini), adherence reporting, and dynamic UI panels for prescriptions and tracking. 
+
+**Last working item**:
+- Last item agent was working: Modifying CTA visibility logic in the  to depend on Invoice Links rather than Order Links (matching the Home page logic). Renaming the Buy Now button in the Order Tracking empty state to Track My Order and linking it to the newly routed .
+- Status: USER VERIFICATION PENDING
+- Agent Testing Done: Y (via log verification/hot-reload checks)
+- Which testing method agent to use?: Screenshot tool / Manual testing via browser. 
+- User Testing Done: N
+
+**All Pending/In progress Issue list**:
+- Issue 1: Cross-App SSO Integration with 
+  - Attempted fixes: Agent proposed three architectures (Google soft-SSO, session-token passthrough, or SSO ticket).
+  - Next debug checklist: Await user instructions on whether they own the health-wallet codebase and their preferred SSO flow.
+  - Why fix this issue and what will be achieved with the fix?: Seamless navigation for patients clicking the Records tab without requiring them to re-authenticate.
+  - Status: BLOCKED (User explicitly placed this on hold)
+  - Is recurring issue?: N
+  - Should Test frontend/backend/both after fix?: Both
+  - Blocked on other issue: Awaiting user confirmation to resume.
+
+**In progress Task List**:
+- None
+
+**Upcoming and Future Tasks**:
+- Task 1: Resume SSO Integration with Health-Wallet (P1) - Awaiting user approval to proceed.
+
+**Completed work in this session**:
+- Cloned GitHub repo without code modifications, keeping  vars protected (DONE)
+- Replaced 5 splash screen slides with 4 newly provided images and fixed mobile layout cropping using  (DONE)
+- Seeded Medical Information for the CRM Sample Customer in  so the UI panel renders (DONE)
+- Fixed AI disease detection by integrating  in the backend, allowing Gemini 2.5 Flash to parse medications (DONE)
+- Synced the Adherence Rate between the user Reports page and the CRM Profile (added a 7-day server-side aggregation in , returning  for users with no logs) (DONE)
+- Updated Buy Medicine CTA gate logic in  and  to trigger exclusively on Invoice Links ( or ) (DONE)
+- Renamed Meds page Buy Now button to Track My Order and added URL query parameter parsing to  for deep-linking directly to the Orders tab (DONE)
+
+**Earlier issues found/mentioned but not fixed**:
+- None
+
+**Known issue recurrence from previous fork**:
+- Recurrence count: 0 (Initial clone session)
+- Status: NOT STARTED
+
+**Code Architecture**:
+- : React frontend.
+  - : Main application screens (Home, Profile, Medications, Reports).
+  - : Admin CRM screens (Dashboard, Patient Detail, Opportunities).
+  - : Reusable UI components (including Shadcn).
+- : FastAPI application.
+  - : API endpoints (, etc.).
+  - : External integrations ( for Gemini).
+  - : Main entry point.
+  - : Pydantic schemas.
+  - : Database populator.
+
+**Key Technical Concepts**:
+- React 19, TailwindCSS, Shadcn UI
+- FastAPI, AsyncIOMotorClient (Motor) for MongoDB
+- Gemini API invoked via LiteLLM/Emergent Integrations wrapper
+- Capacitor (for Android mobile build wrapper)
+
+**key DB schema**:
+- : 
+- : 
+- : 
+- : 
+
+**changes in tech stack**:
+- None.
+
+**All files of reference**:
+-  (Carousel and splash styling updated)
+-  (Mock patient profiles updated)
+-  (Modified to include Emergent LLM Key)
+-  (Adherence calculation logic added)
+-  (CTA conditional rendering updated)
+-  (CTA and Tracking button updated)
+-  (Added tab query parameter mapping)
+
+**Areas that need refactoring**:
+- None apparent.
+
+**key api endpoints**:
+-  (Returns CRM patients dynamically aggregating 7-day adherence rate)
+-  (Calls Gemini to detect diseases)
+- 
+
+**Critical Info for New Agent**:
+- **AI Integration Constraints**: The backend uses the  environment variable to authenticate Gemini API calls for disease detection. Keep an eye on LiteLLM budget limits; if requests fail, it's likely a universal key budget error.
+- **CTA Logic Change**: The Buy Medicine modules on both Home and Meds pages are strictly gated behind *Invoice Links* ( or ). Order links do *not* trigger the UI elements anymore.
+- **Adherence Computation**: CRM Adherence is now computed live on the backend over a 7-day window. The hardcoded  inside  acts only as a hidden fallback/seed.
+
+**documents and test reports created in this job**:
+- Standard emergent output logs. No specific  test reports created.
+
+**Last 10 User Messages and any pending HUMAN messages**:
+1. User: Make a quick change to 'Meds' page: use 'Invoice Link' instead of 'Order Link' for triggering Monthly Medicine Purchase logic. Also change Buy Now in Order Tracking to Track My Order and link to Profile order section. (Completed)
+2. User: CTA logic for Buy Medicine should trigger on Invoice Link updates only, not order link. Make changes. (Completed)
+3. User: Buy Medicine CTA is not showing up for Careable Pharmacy after updating Medicine Invoice Link. Please check. (Completed)
+4. User: Time window for adherence - last 7 days. When user has zero logs - show -. (Completed)
+5. User: SSO put on hold. Link Adherence % calculated in Reports Page to the Adherence score in Patient profile in CRM. (Completed)
+6. User: Records button goes to health-wallet-4 app. Make it so user doesn't have to re-login (SSO). (Put on hold by User)
+7. User: CRM patient profile Medical Information section is not seen for Sample Customer, and AI is not detecting/listing diseases. (Completed)
+8. User: Splash screen text cropping on mobile (Completed)
+9. User: A minor update is required for the splash screen slideshow. Replace 5 images with 4 provided ones. (Completed)
+10. User: Start the task now (Completed)
+
+**Project Health Check**:
+- Frontend: RUNNING
+- Backend: RUNNING
+- DB: Seeded and Functional
+
+**3rd Party Integrations**:
+- Emergent Google OAuth (Authentication) — uses Emergent login flow
+- Gemini 2.5 Flash Lite (Disease detection) — uses Emergent LLM Key ()
+
+**Testing status**:
+- Testing agent used after significant changes: NO
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: None
+- Known regressions: None
+
+**Credentials to test flow**:
+- Admin CRM User: 
+- Patient User: 
+- Password (for both): 
+*(Authentication supports both Emergent Google Auth and JWT Email/Password)*
+
+**What agent forgot to execute**:
+- Nothing. The agent successfully addressed all sub-requests including the repo clone, splash modifications, AI key integration, and custom CRM metric connections. The SSO feature was expressly paused by the user.</analysis>

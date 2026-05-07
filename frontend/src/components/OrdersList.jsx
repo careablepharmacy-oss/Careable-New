@@ -4,6 +4,7 @@ import {
   Package, ChevronRight, ShoppingBag, Pill, Syringe, FileText, ExternalLink
 } from 'lucide-react';
 import apiService from '../services/api';
+import TrackedOrdersPatient from './TrackedOrdersPatient';
 
 // ---- Status colour maps ----
 const deliveryStatusColors = {
@@ -263,39 +264,45 @@ const OrdersList = ({ compact = false }) => {
 
   if (totalItems === 0) {
     return (
-      <div className="text-center py-10" data-testid="orders-empty-state">
-        <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 flex items-center justify-center mb-4">
-          <ShoppingBag className="w-10 h-10 text-emerald-500" />
+      <div className="space-y-4">
+        <TrackedOrdersPatient />
+        <div className="text-center py-10" data-testid="orders-empty-state">
+          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-50 flex items-center justify-center mb-4">
+            <ShoppingBag className="w-10 h-10 text-emerald-500" />
+          </div>
+          <h3 className="text-base font-semibold text-gray-800">No orders yet</h3>
+          <p className="text-sm text-gray-500 mt-1">Start shopping to see your orders here</p>
+          <button
+            className="mt-5 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium"
+            onClick={() => navigate('/home')}
+            data-testid="start-shopping-btn"
+          >
+            Start Shopping
+          </button>
         </div>
-        <h3 className="text-base font-semibold text-gray-800">No orders yet</h3>
-        <p className="text-sm text-gray-500 mt-1">Start shopping to see your orders here</p>
-        <button
-          className="mt-5 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium"
-          onClick={() => navigate('/home')}
-          data-testid="start-shopping-btn"
-        >
-          Start Shopping
-        </button>
       </div>
     );
   }
 
   return (
-    <div className={`space-y-3 ${compact ? '' : ''}`}>
-      {invoiceOrders.map(inv => (
-        <InvoiceCard
-          key={`inv-${inv.type}`}
-          invoiceOrder={inv}
-          onClick={() => handleInvoiceOrderClick(inv)}
-        />
-      ))}
-      {ecomOrders.map(order => (
-        <EcommerceCard
-          key={order.id}
-          order={order}
-          onClick={() => navigate(`/order-confirmation/${order.id}`)}
-        />
-      ))}
+    <div className={`space-y-4 ${compact ? '' : ''}`}>
+      <TrackedOrdersPatient />
+      <div className="space-y-3">
+        {invoiceOrders.map(inv => (
+          <InvoiceCard
+            key={`inv-${inv.type}`}
+            invoiceOrder={inv}
+            onClick={() => handleInvoiceOrderClick(inv)}
+          />
+        ))}
+        {ecomOrders.map(order => (
+          <EcommerceCard
+            key={order.id}
+            order={order}
+            onClick={() => navigate(`/order-confirmation/${order.id}`)}
+          />
+        ))}
+      </div>
     </div>
   );
 };

@@ -148,3 +148,70 @@ Replaced the off-brand `from-emerald-50 to-teal-50` pastels with brand-tinted al
 **Intentionally preserved**:
 - `bg-green-50` / `bg-red-50` semantic status badges (success / error) — these communicate state, not brand
 - `text-green-600` adherence-success indicators
+
+
+---
+
+## Session: Auto Delivery Tracking (Feb 7, 2026)
+
+User business model: medicines are delivered by 3rd-party couriers (1mg/ClickPost
+today; possibly Apollo/PharmEasy in 6 months). Built an in-house tracker so
+delivery status is pulled from the courier tracking page automatically — no
+contracts, no paid aggregator, ~zero recurring cost at the user's scale (10 →
+100 active orders/month).
+
+### Architecture
+- **Service** `backend/services/delivery_tracker.py`
+  - Detects carrier from URL (`detect_carrier`) — pluggable for new carriers
+  - For ClickPost (1mg & affiliates): uses Playwright headless to bypass
+    Cloudflare and intercepts the page's JSON `/api/tracking` response for clean
+    structured data (carrier, AWB, scans with timestamp/location/bucket)
+  - Normalizes ClickPost `clickpost_status_bucket` → fixed status set:
+    `Pending / Shipped / In Transit / Out for Delivery / Delivered / Cancelled / Failed`
+  - "Stuck" flag: non-terminal status with no event update for ≥48 h
+- **Routes** `backend/routes/tracked_orders.py`
+  - Admin (`/api/crm/tracked-orders`, PM/Admin gated):
+    POST create, GET list (filters: `user_id`, `flagged_only`, `active_only`),
+    GET single, PATCH (label/notes + manual override + cancel_override),
+    POST refresh, DELETE
+  - Patient (`/api/users/me/tracked-orders`): GET own list, POST refresh
+    (60-second throttle, respects manual override)
+- **Scheduler** added to `server.py` startup: Job 5 — refresh non-terminal,
+  non-overridden orders every 3 hours
+- **Mongo collection**: `tracked_orders` `{id, user_id, type, label, tracking_url,
+  carrier, waybill, status, current_location, last_event, last_event_at, events[],
+  flags{stuck, delayed}, manual_override, notes, created_by, created_at, updated_at,
+  last_checked_at, last_error}`
+
+### Frontend
+- **Patient** `components/TrackedOrdersPatient.jsx` — pretty status pill,
+  carrier + AWB, latest event, collapsible full timeline, "Open courier page"
+  + "Refresh" actions; embedded above existing OrdersList in Profile → Orders tab
+- **CRM admin** `components/TrackedOrdersAdmin.jsx` — table with status badges,
+  Stuck flag, Manual override flag; "Add Tracking Link" dialog (type, label,
+  URL, notes); per-row Refresh / Edit (manual override status) / Delete; embedded
+  in CRM Patient Detail → "Invoices & Orders" tab
+- **CRM dashboard** `components/CrmDeliveryHealth.jsx` — full-width widget
+  showing flagged shipments (Stuck) across all patients with deep-link to the
+  patient's profile
+
+### User decisions (this session)
+- Tracking URL entry: **CRM admin only**, in patient detail
+- Refresh frequency: **3 hours**
+- Email alerts: **skipped for v1** (in-app red flags + toasts only)
+- Manual override: **enabled** — admin can mark Delivered/Cancelled/etc.
+
+### Verified end-to-end
+- Backend: POST/GET/PATCH/refresh/DELETE all working (real ClickPost URL parsed,
+  Delhivery scans captured, status normalized to "Delivered", 26 events stored)
+- Manual override: PATCH with `status` sets `manual_override: true`; refresh API
+  returns 400 while override active; PATCH with `cancel_override: true` clears it
+- Filters: `flagged_only`, `active_only`, `user_id` all working
+- Frontend lint clean, webpack compiles successfully
+
+### Future-proofing
+- New carriers = register a fetcher in `CARRIER_FETCHERS` (the structure is in
+  place; only the dispatch table to extend)
+- If volume grows past ~500 shipments/month, swap the Playwright scraper for the
+  AfterShip or Shiprocket Tracking API — only `delivery_tracker.py` changes;
+  routes / UI / DB shape stay identical

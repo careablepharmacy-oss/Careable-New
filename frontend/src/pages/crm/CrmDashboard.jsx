@@ -31,6 +31,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getDashboardStats, getPatientsToCall, getPatientsToCallGrouped, seedDatabase, generateOpportunities, getRevenueSummary, getPendingOnboarding } from "@/lib/crmApi";
+import CrmDeliveryHealth from "@/components/CrmDeliveryHealth";
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -308,6 +309,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Delivery Health (full width) — shipments needing attention */}
+        <div className="lg:col-span-2">
+          <CrmDeliveryHealth />
+        </div>
+
         {/* Patients Needing Onboarding (card above Daily Task List) */}
         <Card data-testid="patients-needing-onboarding-card" className="lg:col-span-2 border-amber-200 bg-gradient-to-r from-amber-50 to-white">
           <CardHeader className="pb-3">

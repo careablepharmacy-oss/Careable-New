@@ -40,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MedicationForm from "@/components/MedicationForm";
 import DetectedDiseasesCard from "@/components/crm/DetectedDiseasesCard";
 import PurchaseLinksPanel from "@/components/PurchaseLinksPanel";
+import TrackedOrdersAdmin from "@/components/TrackedOrdersAdmin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip as ShadTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -3225,6 +3226,9 @@ export default function PatientDetail() {
               mode="inline"
               onSaved={() => fetchInvoicesAndOrders()}
             />
+
+            {/* Live order tracking — paste a 1mg/ClickPost URL, status auto-syncs */}
+            <TrackedOrdersAdmin userId={id} userName={patient?.name || ""} />
 
             {/* Invoice History */}
             <Card>

@@ -7,7 +7,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://careable-preview.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://careable-clone-1.preview.emergentagent.com").rstrip("/")
 PM_TOKEN = "test_pm_crm_2026"
 USER_TOKEN = "test_user_crm_2026"
 PM_USER_ID = "2069063a-50c1-4f99-99e5-5b5d2b21d7ab"

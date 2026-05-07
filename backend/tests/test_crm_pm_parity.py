@@ -12,7 +12,7 @@ import requests
 
 BASE_URL = os.environ.get(
     "REACT_APP_BACKEND_URL",
-    "https://careable-preview.preview.emergentagent.com",
+    "https://careable-clone-1.preview.emergentagent.com",
 ).rstrip("/")
 
 PM_TOKEN = "test_pm_crm_2026"

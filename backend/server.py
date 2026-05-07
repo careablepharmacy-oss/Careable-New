@@ -47,6 +47,12 @@ from routes.caregivers import router as caregiver_router, set_db as set_caregive
 from routes.prescription_manager import router as pm_router, set_db as set_pm_db
 from routes.invoice_delivery import router as inv_router, set_db as set_inv_db, create_indexes as create_inv_indexes
 from routes.crm import router as crm_router, set_db as set_crm_db, run_startup_migrations as run_crm_migrations
+from routes.tracked_orders import (
+    admin_router as tracked_orders_admin_router,
+    patient_router as tracked_orders_patient_router,
+    set_db as set_tracked_orders_db,
+    refresh_all_pending as refresh_tracked_orders,
+)
 from services.medicine_intel import set_db as set_medicine_intel_db
 from helpers import (
     serialize_model, notify_caregiver, send_missed_medication_webhook,
@@ -71,6 +77,7 @@ set_pm_db(db)
 set_helpers_db(db)
 set_inv_db(db)
 set_crm_db(db)
+set_tracked_orders_db(db)
 set_medicine_intel_db(db)
 
 # Create the main app without a prefix
@@ -95,7 +102,7 @@ async def options_handler(request: Request, full_path: str):
     allowed_origins = [
         "http://localhost:3000",
         "http://localhost",
-        "https://careable-preview.preview.emergentagent.com",
+        "https://careable-clone-1.preview.emergentagent.com",
         "https://medremind-pwa.emergent.host",
         "https://diabexpert.online",
         "https://www.diabexpert.online",
@@ -572,6 +579,23 @@ async def startup_event():
         replace_existing=True
     )
     logging.info("[Startup] Job 4: Refill reminders (9 AM IST) - scheduled")
+
+    # Job 5: Refresh delivery tracking for non-terminal orders every 3 hours
+    async def _job_refresh_tracked_orders():
+        try:
+            res = await refresh_tracked_orders()
+            logging.info(f"[Tracker] Cycle: {res}")
+        except Exception as e:
+            logging.error(f"[Tracker] Cycle error: {e}")
+
+    scheduler.add_job(
+        _job_refresh_tracked_orders,
+        'interval',
+        hours=3,
+        id='refresh_tracked_orders',
+        replace_existing=True,
+    )
+    logging.info("[Startup] Job 5: Refresh tracked delivery orders (every 3h) - scheduled")
     
     # Start the scheduler
     scheduler.start()
@@ -2633,7 +2657,7 @@ async def force_send_overdue_reminders():
 CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost",
-    "https://careable-preview.preview.emergentagent.com",
+    "https://careable-clone-1.preview.emergentagent.com",
     "https://medremind-pwa.emergent.host",
     "https://diabexpert.online",
     "https://www.diabexpert.online",
@@ -2714,6 +2738,8 @@ app.include_router(caregiver_router)
 app.include_router(pm_router)
 app.include_router(inv_router)
 app.include_router(crm_router)
+app.include_router(tracked_orders_admin_router)
+app.include_router(tracked_orders_patient_router)
 
 # JWT email/password auth (works alongside Emergent OAuth)
 from jwt_auth import build_jwt_auth_router
