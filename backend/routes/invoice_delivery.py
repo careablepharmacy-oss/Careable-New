@@ -83,6 +83,17 @@ class SellerSettings(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: str
 
+
+class OrderTrackingUpdate(BaseModel):
+    """Attach (or clear) a courier tracking URL on an existing inv_order."""
+    tracking_url: Optional[str] = None  # empty/None = clear
+
+
+class OrderTrackingManualUpdate(BaseModel):
+    """Manual override for the scraped tracking_status."""
+    tracking_status: Optional[str] = None
+    cancel_override: Optional[bool] = False
+
 # ========= Auth Helpers =========
 
 async def get_current_user(request: Request) -> dict:
@@ -882,7 +893,264 @@ async def update_order_status(order_id: str, update_data: OrderStatusUpdate, req
 async def get_my_orders(request: Request):
     user = await get_current_user(request)
     orders = await db.inv_orders.find({"customer_email": user["email"]}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Strip courier-identifying fields from the customer-facing response.
+    # The customer sees normalized status + last event + location + timeline,
+    # but never the 1mg/ClickPost URL, carrier name, or AWB.
+    HIDE = {"tracking_url", "tracking_carrier", "tracking_waybill"}
+    for o in orders:
+        # Add a safe boolean so the UI knows tracking is attached without exposing the URL
+        o["has_tracking"] = bool(o.get("tracking_url"))
+        for k in HIDE:
+            o.pop(k, None)
+        events = o.get("tracking_events") or []
+        # Also clean per-event raw status fields that could expose courier-specific codes
+        for ev in events:
+            ev.pop("raw_status", None)
+            ev.pop("bucket", None)
     return orders
+
+
+# ========= Order Tracking Routes (1mg/ClickPost integration) =========
+# Tracking is attached to the existing inv_order — no parallel record.
+# Customer-facing API (`/api/inv/orders`) returns these fields too, but the
+# frontend strips carrier/AWB before showing them to the customer.
+
+# Mapping from scraped tracking_status -> internal status.
+# Out for Delivery normalises to "Shipped" since admin already moves to "Delivered" on confirmation.
+TRACKING_TO_INTERNAL_STATUS = {
+    "Pending": "Pending",
+    "Shipped": "Shipped",
+    "In Transit": "Shipped",
+    "Out for Delivery": "Shipped",
+    "Delivered": "Delivered",
+    "Cancelled": "Pending",  # let admin decide explicitly
+    "Failed": "Pending",
+}
+
+ALLOWED_TRACKING_STATUSES = (
+    "Pending", "Shipped", "In Transit", "Out for Delivery",
+    "Delivered", "Cancelled", "Failed",
+)
+TRACKING_TERMINAL_STATUSES = {"Delivered", "Cancelled", "Failed"}
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def _refresh_order_tracking(order: dict) -> dict:
+    """Hit the tracker for one order; respect manual_override.
+
+    Updates the inv_orders document in-place. Also auto-updates internal
+    `status` when scraped tracking_status changes (unless tracking_manual_override
+    is set, or admin has already moved the internal status manually past Pending).
+    """
+    from services.delivery_tracker import fetch_delivery_status, compute_flags
+
+    if order.get("tracking_manual_override"):
+        return order
+    url = order.get("tracking_url")
+    if not url:
+        return order
+
+    try:
+        result = await fetch_delivery_status(url)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[Tracker] inv_order {order.get('order_id')} failed: {e}")
+        await db.inv_orders.update_one(
+            {"order_id": order["order_id"]},
+            {"$set": {
+                "tracking_last_error": str(e)[:300],
+                "tracking_last_checked_at": _now_iso(),
+            }},
+        )
+        return order
+
+    is_stuck, _ = compute_flags(result["status"], result.get("last_event_at"))
+    update = {
+        "tracking_carrier": result.get("carrier"),
+        "tracking_waybill": result.get("waybill"),
+        "tracking_status": result["status"],
+        "tracking_current_location": result.get("current_location") or "",
+        "tracking_last_event": result.get("last_event") or "",
+        "tracking_last_event_at": result.get("last_event_at"),
+        "tracking_events": result.get("events") or [],
+        "tracking_flags": {"stuck": is_stuck, "delayed": False},
+        "tracking_last_checked_at": _now_iso(),
+        "tracking_last_error": None,
+        "updated_at": _now_iso(),
+    }
+
+    # Auto-sync internal status if not manually set beyond Pending.
+    new_internal = TRACKING_TO_INTERNAL_STATUS.get(result["status"])
+    if new_internal and order.get("status") in (None, "Pending", "Processing"):
+        update["status"] = new_internal
+    # Always upgrade to Delivered when courier confirms delivery
+    if result["status"] == "Delivered":
+        update["status"] = "Delivered"
+
+    await db.inv_orders.update_one({"order_id": order["order_id"]}, {"$set": update})
+    order.update(update)
+
+    # Mirror to invoice delivery_status (Shipped/Delivered) for backward compat
+    inv_id = order.get("invoice_id")
+    if inv_id and "status" in update:
+        ds = {"Shipped": "dispatched", "Delivered": "delivered"}.get(update["status"])
+        if ds:
+            await db.inv_invoices.update_one(
+                {"invoice_id": inv_id},
+                {"$set": {"delivery_status": ds, "tracking_updated_at": _now_iso()}},
+            )
+
+    return order
+
+
+async def refresh_all_inv_orders_tracking() -> dict:
+    """Scheduler entry-point: refresh every order with a tracking_url and a
+    non-terminal tracking_status, that is not under manual override."""
+    if db is None:
+        return {"checked": 0, "updated": 0}
+    pending = await db.inv_orders.find({
+        "tracking_url": {"$nin": [None, ""]},
+        "tracking_manual_override": {"$ne": True},
+        "$or": [
+            {"tracking_status": {"$exists": False}},
+            {"tracking_status": {"$nin": list(TRACKING_TERMINAL_STATUSES)}},
+        ],
+    }, {"_id": 0}).to_list(length=500)
+
+    changed = 0
+    for order in pending:
+        prev = order.get("tracking_status")
+        await _refresh_order_tracking(order)
+        if order.get("tracking_status") != prev:
+            changed += 1
+    logger.info(f"[Tracker] inv_orders refresh: checked={len(pending)} changed={changed}")
+    return {"checked": len(pending), "updated": changed}
+
+
+@router.patch("/admin/orders/{order_id}/tracking")
+async def attach_order_tracking(order_id: str, body: OrderTrackingUpdate, request: Request):
+    """Attach or clear the courier tracking URL on an inv_order. Triggers an
+    initial fetch so admin sees the status immediately."""
+    from services.delivery_tracker import detect_carrier, extract_waybill
+    await require_pm(request)
+
+    order = await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    url = (body.tracking_url or "").strip() or None
+
+    if url is None:
+        # Clear all tracking fields
+        clear = {
+            "tracking_url": None,
+            "tracking_carrier": None,
+            "tracking_waybill": None,
+            "tracking_status": None,
+            "tracking_current_location": "",
+            "tracking_last_event": "",
+            "tracking_last_event_at": None,
+            "tracking_events": [],
+            "tracking_flags": {"stuck": False, "delayed": False},
+            "tracking_manual_override": False,
+            "tracking_last_checked_at": None,
+            "tracking_last_error": None,
+            "updated_at": _now_iso(),
+        }
+        await db.inv_orders.update_one({"order_id": order_id}, {"$set": clear})
+        return {**order, **clear}
+
+    update = {
+        "tracking_url": url,
+        "tracking_carrier": detect_carrier(url),
+        "tracking_waybill": extract_waybill(url),
+        "tracking_manual_override": False,
+        "tracking_last_error": None,
+        "updated_at": _now_iso(),
+    }
+    await db.inv_orders.update_one({"order_id": order_id}, {"$set": update})
+    order.update(update)
+
+    # Initial fetch (best-effort; scheduler will retry)
+    try:
+        await _refresh_order_tracking(order)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"[Tracker] initial fetch failed: {e}")
+
+    saved = await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+    return saved
+
+
+@router.post("/admin/orders/{order_id}/tracking/refresh")
+async def refresh_order_tracking_now(order_id: str, request: Request):
+    await require_pm(request)
+    order = await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not order.get("tracking_url"):
+        raise HTTPException(status_code=400, detail="No tracking URL attached to this order")
+    if order.get("tracking_manual_override"):
+        raise HTTPException(status_code=400, detail="Manual override active — clear it first")
+    await _refresh_order_tracking(order)
+    saved = await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+    return saved
+
+
+@router.patch("/admin/orders/{order_id}/tracking/manual")
+async def set_order_tracking_manual(order_id: str, body: OrderTrackingManualUpdate, request: Request):
+    await require_pm(request)
+    order = await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    update: dict = {"updated_at": _now_iso()}
+    if body.cancel_override:
+        update["tracking_manual_override"] = False
+    if body.tracking_status is not None:
+        if body.tracking_status not in ALLOWED_TRACKING_STATUSES:
+            raise HTTPException(status_code=400, detail=f"tracking_status must be in {ALLOWED_TRACKING_STATUSES}")
+        update["tracking_status"] = body.tracking_status
+        update["tracking_manual_override"] = True
+        # When admin manually marks delivered/cancelled, auto-sync internal status too
+        if body.tracking_status == "Delivered":
+            update["status"] = "Delivered"
+        elif body.tracking_status in ("Cancelled", "Failed"):
+            # leave internal status — admin decides separately
+            pass
+        update["tracking_flags"] = {"stuck": False, "delayed": False}
+
+    await db.inv_orders.update_one({"order_id": order_id}, {"$set": update})
+    return await db.inv_orders.find_one({"order_id": order_id}, {"_id": 0})
+
+
+@router.get("/admin/orders/flagged")
+async def list_flagged_orders(request: Request, limit: int = 50):
+    """Active or flagged shipments — used by the CRM Delivery Health widget."""
+    await require_pm(request)
+    flagged = await db.inv_orders.find(
+        {"tracking_url": {"$nin": [None, ""]}, "tracking_flags.stuck": True},
+        {"_id": 0},
+    ).sort("tracking_last_event_at", 1).to_list(length=limit)
+
+    active = await db.inv_orders.count_documents({
+        "tracking_url": {"$nin": [None, ""]},
+        "tracking_status": {"$nin": list(TRACKING_TERMINAL_STATUSES)},
+    })
+
+    # Enrich with patient name via customer_email
+    emails = list({o.get("customer_email") for o in flagged if o.get("customer_email")})
+    users = []
+    if emails:
+        users = await db.users.find({"email": {"$in": emails}}, {"_id": 0, "id": 1, "name": 1, "email": 1}).to_list(length=len(emails))
+    by_email = {u["email"]: u for u in users}
+    for f in flagged:
+        u = by_email.get(f.get("customer_email")) or {}
+        f["patient_id"] = u.get("id")
+        f["patient_name"] = u.get("name") or f.get("customer_name") or "Unknown"
+
+    return {"flagged": flagged, "active_count": active, "flagged_count": len(flagged)}
 
 # ========= CSV Export =========
 

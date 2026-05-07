@@ -215,3 +215,66 @@ contracts, no paid aggregator, ~zero recurring cost at the user's scale (10 →
 - If volume grows past ~500 shipments/month, swap the Playwright scraper for the
   AfterShip or Shiprocket Tracking API — only `delivery_tracker.py` changes;
   routes / UI / DB shape stay identical
+
+
+---
+
+## Session: Order Tracking Refactor — Single Source of Truth (Feb 7, 2026 - cont.)
+
+**Problem**: The first iteration of order tracking created a parallel
+`tracked_orders` collection independent of the existing `inv_orders` (the
+canonical paid order). Result: CRM order # was not linked to the 1mg waybill,
+and the customer's "My Orders" page showed two separate entries for the same
+real-world order.
+
+**Fix**: Collapsed both records into one. Tracking is now an *attribute* of the
+existing `inv_order`, not a parallel record.
+
+### Backend changes
+- **Extended `inv_orders` schema** (additive — existing orders unaffected):
+  `tracking_url, tracking_carrier, tracking_waybill, tracking_status,
+  tracking_current_location, tracking_last_event, tracking_last_event_at,
+  tracking_events[], tracking_flags{stuck}, tracking_manual_override,
+  tracking_last_checked_at, tracking_last_error`
+- **New endpoints in `routes/invoice_delivery.py`**:
+  - `PATCH /api/inv/admin/orders/{id}/tracking` — attach/clear courier URL
+  - `POST /api/inv/admin/orders/{id}/tracking/refresh` — manual refresh
+  - `PATCH /api/inv/admin/orders/{id}/tracking/manual` — manual override
+  - `GET /api/inv/admin/orders/flagged` — Stuck shipments + active count
+- **Auto-sync** internal status from tracking (Out for Delivery / Delivered).
+  Mirrors to `inv_invoices.delivery_status`. Admin override always wins.
+- **Customer-facing privacy strip**: `GET /api/inv/orders` removes
+  `tracking_url`, `tracking_carrier`, `tracking_waybill`, per-event
+  `raw_status` and `bucket`. Adds `has_tracking` boolean for UI.
+- **Scheduler** swap: 3-hour job now refreshes `inv_orders` instead.
+- **Startup migration** drops legacy `tracked_orders` collection (idempotent).
+- **CRM endpoint** `GET /api/crm/patients/{id}/invoices` now also returns
+  `orders[]` & `order_count` (paid inv_orders matched by email).
+- **Deleted** `routes/tracked_orders.py`.
+
+### Frontend changes
+- **Deleted** `TrackedOrdersAdmin.jsx`, `TrackedOrdersPatient.jsx`.
+- **New** `components/PatientOrdersAdmin.jsx` embedded in CRM Patient Detail
+  → Invoices & Orders tab; lists patient's paid orders with attach/edit/refresh.
+- **`OrdersList.jsx` rewritten**: fetches `/api/inv/orders` (was missing!) +
+  cart + purchase links. Customer card shows status pill + last event +
+  location summary + expandable timeline. **No carrier/AWB/courier link visible.**
+  Stale "Awaiting payment" cards from purchase_links auto-hide once a paid
+  order exists.
+- **`CrmDeliveryHealth.jsx`** queries `/api/inv/admin/orders/flagged`.
+
+### Verified end-to-end
+- Attach 1mg URL → scraped → status "Delivered", 26 events, internal status
+  auto-synced to Delivered ✓
+- Manual override (`Cancelled`) → refresh returns HTTP 400 ✓
+- `cancel_override:true` resumes auto-sync ✓
+- Clear URL wipes all tracking fields ✓
+- CRM patient endpoint returns orders[] with full tracking data ✓
+- Frontend lint clean (4 components), webpack compiles ✓
+
+### User flow (now clean — single record)
+1. Customer pays invoice → `inv_orders` auto-created
+2. HA places 1mg order, copies tracking URL
+3. HA: CRM → patient profile → Invoices & Orders → "Attach 1mg URL" on the row
+4. Status auto-syncs every 3h; internal status flips on Delivered
+5. Customer sees ONE card per order with live status — no 1mg branding

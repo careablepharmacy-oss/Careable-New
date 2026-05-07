@@ -3152,6 +3152,14 @@ async def list_patient_invoices(patient_id: str):
             {"$or": or_clauses}, {"_id": 0}
         ).sort("created_at", -1).to_list(200)
 
+    # Also pull paid orders (inv_orders) for this patient — match by email only
+    # (customer_email is the only identifier inv_orders carries).
+    orders = []
+    if email:
+        orders = await db.inv_orders.find(
+            {"customer_email": email}, {"_id": 0}
+        ).sort("created_at", -1).to_list(200)
+
     return {
         "order_links": {
             "medicine_order_link": profile.get("medicine_order_link", ""),
@@ -3166,6 +3174,8 @@ async def list_patient_invoices(patient_id: str):
         },
         "invoices": invoices,
         "invoice_count": len(invoices),
+        "orders": orders,
+        "order_count": len(orders),
     }
 
 

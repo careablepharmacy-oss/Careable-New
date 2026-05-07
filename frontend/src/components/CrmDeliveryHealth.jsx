@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import apiService from '../services/api';
 
-const STATUS_BADGE = {
+const TRACKING_BADGE = {
   'Pending': 'bg-slate-100 text-slate-700',
   'Shipped': 'bg-blue-100 text-blue-700',
   'In Transit': 'bg-indigo-100 text-indigo-700',
@@ -23,19 +23,14 @@ const formatTs = (s) => {
 };
 
 const CrmDeliveryHealth = () => {
-  const [flagged, setFlagged] = useState([]);
-  const [active, setActive] = useState([]);
+  const [data, setData] = useState({ flagged: [], active_count: 0, flagged_count: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [flaggedData, activeData] = await Promise.all([
-          apiService.get('/api/crm/tracked-orders?flagged_only=true&limit=20'),
-          apiService.get('/api/crm/tracked-orders?active_only=true&limit=200'),
-        ]);
-        setFlagged(Array.isArray(flaggedData) ? flaggedData : []);
-        setActive(Array.isArray(activeData) ? activeData : []);
+        const res = await apiService.get('/api/inv/admin/orders/flagged');
+        setData(res || { flagged: [], active_count: 0, flagged_count: 0 });
       } catch (e) {
         console.error('Delivery health load failed:', e);
       } finally {
@@ -46,6 +41,8 @@ const CrmDeliveryHealth = () => {
   }, []);
 
   if (loading) return null;
+
+  const { flagged, active_count: activeCount, flagged_count: flaggedCount } = data;
 
   return (
     <Card className="border-slate-200" data-testid="delivery-health-card">
@@ -58,31 +55,31 @@ const CrmDeliveryHealth = () => {
             <div>
               <CardTitle className="text-lg font-semibold">Delivery Health</CardTitle>
               <p className="text-xs text-slate-500 mt-0.5">
-                {active.length} active shipment{active.length !== 1 ? 's' : ''}
-                {flagged.length > 0 ? ` · ${flagged.length} need${flagged.length === 1 ? 's' : ''} attention` : ''}
+                {activeCount} active shipment{activeCount !== 1 ? 's' : ''}
+                {flaggedCount > 0 ? ` · ${flaggedCount} need${flaggedCount === 1 ? 's' : ''} attention` : ''}
               </p>
             </div>
           </div>
-          {flagged.length > 0 && (
+          {flaggedCount > 0 && (
             <Badge className="bg-amber-500 text-white" data-testid="delivery-flagged-count">
-              {flagged.length}
+              {flaggedCount}
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        {flagged.length === 0 && active.length === 0 ? (
+        {flaggedCount === 0 && activeCount === 0 ? (
           <p className="text-center text-slate-500 py-4 text-sm" data-testid="delivery-health-empty">
-            No tracked deliveries yet. Add tracking links from a patient profile.
+            No tracked deliveries yet. Attach a 1mg URL to a paid order to enable auto-tracking.
           </p>
-        ) : flagged.length === 0 ? (
+        ) : flaggedCount === 0 ? (
           <p className="text-center text-emerald-700 py-4 text-sm" data-testid="delivery-health-all-good">
-            All {active.length} active shipment{active.length !== 1 ? 's are' : ' is'} on track.
+            All {activeCount} active shipment{activeCount !== 1 ? 's are' : ' is'} on track.
           </p>
         ) : (
           <div className="space-y-2">
             {flagged.slice(0, 6).map((o, i) => (
-              <Link to={`/crm/patients/${o.user_id}`} key={o.id}
+              <Link to={o.patient_id ? `/crm/patients/${o.patient_id}` : '/invoice-manager/orders'} key={o.order_id}
                     data-testid={`flagged-row-${i}`}>
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition">
                   <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-700 flex items-center justify-center flex-shrink-0">
@@ -90,14 +87,14 @@ const CrmDeliveryHealth = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-900 truncate">
-                      {o.patient_name} · {o.label || `${o.type} delivery`}
+                      {o.patient_name} · {o.order_id}
                     </p>
                     <p className="text-xs text-slate-600 truncate">
-                      {o.carrier || 'Unknown'} · {o.last_event || 'No recent updates'} · last {formatTs(o.last_event_at)}
+                      {o.tracking_carrier || 'Unknown'} · {o.tracking_last_event || 'No recent updates'} · last {formatTs(o.tracking_last_event_at)}
                     </p>
                   </div>
-                  <Badge variant="secondary" className={STATUS_BADGE[o.status] || 'bg-slate-100 text-slate-700'}>
-                    {o.status}
+                  <Badge variant="secondary" className={TRACKING_BADGE[o.tracking_status] || 'bg-slate-100 text-slate-700'}>
+                    {o.tracking_status}
                   </Badge>
                   <ChevronRight className="h-4 w-4 text-amber-500 flex-shrink-0" />
                 </div>

@@ -47,12 +47,7 @@ from routes.caregivers import router as caregiver_router, set_db as set_caregive
 from routes.prescription_manager import router as pm_router, set_db as set_pm_db
 from routes.invoice_delivery import router as inv_router, set_db as set_inv_db, create_indexes as create_inv_indexes
 from routes.crm import router as crm_router, set_db as set_crm_db, run_startup_migrations as run_crm_migrations
-from routes.tracked_orders import (
-    admin_router as tracked_orders_admin_router,
-    patient_router as tracked_orders_patient_router,
-    set_db as set_tracked_orders_db,
-    refresh_all_pending as refresh_tracked_orders,
-)
+from routes.invoice_delivery import refresh_all_inv_orders_tracking
 from services.medicine_intel import set_db as set_medicine_intel_db
 from helpers import (
     serialize_model, notify_caregiver, send_missed_medication_webhook,
@@ -77,7 +72,6 @@ set_pm_db(db)
 set_helpers_db(db)
 set_inv_db(db)
 set_crm_db(db)
-set_tracked_orders_db(db)
 set_medicine_intel_db(db)
 
 # Create the main app without a prefix
@@ -531,6 +525,15 @@ async def startup_event():
         logging.info("[Startup] Created invoice delivery indexes")
     except Exception as e:
         logging.info(f"[Startup] Invoice indexes error: {e}")
+
+    # One-time migration: drop the legacy tracked_orders collection.
+    # Tracking was merged into inv_orders (see routes/invoice_delivery.py).
+    try:
+        if "tracked_orders" in await db.list_collection_names():
+            await db.drop_collection("tracked_orders")
+            logging.info("[Startup] Dropped legacy tracked_orders collection")
+    except Exception as e:
+        logging.warning(f"[Startup] tracked_orders drop skipped: {e}")
     
     # Job 1: Check for missed medications every 5 minutes
     # Uses OneSignal for reliable push notification delivery
@@ -580,10 +583,10 @@ async def startup_event():
     )
     logging.info("[Startup] Job 4: Refill reminders (9 AM IST) - scheduled")
 
-    # Job 5: Refresh delivery tracking for non-terminal orders every 3 hours
+    # Job 5: Refresh delivery tracking on inv_orders every 3 hours
     async def _job_refresh_tracked_orders():
         try:
-            res = await refresh_tracked_orders()
+            res = await refresh_all_inv_orders_tracking()
             logging.info(f"[Tracker] Cycle: {res}")
         except Exception as e:
             logging.error(f"[Tracker] Cycle error: {e}")
@@ -2738,8 +2741,6 @@ app.include_router(caregiver_router)
 app.include_router(pm_router)
 app.include_router(inv_router)
 app.include_router(crm_router)
-app.include_router(tracked_orders_admin_router)
-app.include_router(tracked_orders_patient_router)
 
 # JWT email/password auth (works alongside Emergent OAuth)
 from jwt_auth import build_jwt_auth_router
